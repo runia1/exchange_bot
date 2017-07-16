@@ -1,0 +1,7 @@
+{
+  "directories": {
+    "lib": "./lib"
+  },
+  "main": "index.js",
+  "name": "trading-algorithm"
+}

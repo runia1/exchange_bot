@@ -1,0 +1,24 @@
+{
+  "name": "exchange_bot",
+  "version": "0.0.1",
+  "scripts": {
+    "build": "babel bot.js -d build",
+    "run": "node build/bot.js",
+    "test": "npm run build && npm run run"
+  },
+  "dependencies": {
+    "express": "^4.15.0",
+    "gdax": "github:coinbase/gdax-node",
+    "mongodb": "^2.2.25",
+    "nodemailer": "^4.0.1",
+    "request": "^2.81.0",
+    "request-promise-native": "^1.0.4",
+    "uuid": "^3.0.1"
+  },
+  "devDependencies": {
+    "babel-cli": "^6.24.0",
+    "babel-polyfill": "^6.23.0",
+    "babel-preset-es2015": "^6.24.0",
+    "babel-preset-stage-2": "^6.22.0"
+  }
+}
