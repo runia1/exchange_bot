@@ -2,7 +2,7 @@
   "name": "exchange_bot",
   "version": "0.0.1",
   "scripts": {
-    "build": "babel bot.js -d build",
+    "build": "babel bot.js -d build && babel my_modules -d build/my_modules",
     "run": "node build/bot.js",
     "test": "npm run build && npm run run"
   },
@@ -10,6 +10,7 @@
     "express": "^4.15.0",
     "gdax": "github:coinbase/gdax-node",
     "mongodb": "^2.2.25",
+    "moving-average": "^0.1.1",
     "nodemailer": "^4.0.1",
     "request": "^2.81.0",
     "request-promise-native": "^1.0.4",
