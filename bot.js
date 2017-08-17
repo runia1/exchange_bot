@@ -178,7 +178,7 @@ const calc_taker_fees = (coin_price, coin_amount) => {
 const log_message = (log_level, topic, msg) => {
   msg = `${new Date()} ${log_level} => topic: ${topic} msg: ${msg}`;
 
-  //log it to stderr
+  // log it
   console.log(msg);
 
   // email it
