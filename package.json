@@ -9,7 +9,7 @@
   "dependencies": {
     "express": "^4.15.0",
     "gdax": "github:coinbase/gdax-node",
-    "mongodb": "^2.2.25",
+    "mongodb": "^2.2.31",
     "moving-average": "^0.1.1",
     "nodemailer": "^4.0.1",
     "request": "^2.81.0",
