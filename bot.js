@@ -199,7 +199,7 @@ app.get('/position', (req, res) => {
 });
 
 app.get('/points', (req, res) => {
-    if (!(start in req.query) || !(end in req.query)) {
+    if (!('start' in req.query) || !('end' in req.query)) {
         res.status(400).send({
             result: false,
             message: '/points endpoint must include start and end params'
