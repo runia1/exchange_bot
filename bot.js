@@ -150,6 +150,35 @@ websocket_client.on('message', (data) => {
   }
 });
 
+websocket_client.on('error', (err) => {
+    log_message('ERROR', 'Websocket Error', err);
+});
+
+websocket_client.on('close', (data) => {
+    log_message('ERROR', 'Websocket Error', `websocket closed unexpectedly with data: ${data}. Attempting to re-connect.`);
+
+    // try to re-connect the first time...
+    websocket_client.connect();
+    
+    let count = 1;
+    // attempt to re-connect every 30 seconds.
+    const interval = setInterval(() => {
+        if (!websocket_client.socket) {
+            count++;
+            
+            // send me a email if it keeps failing every 30/2 = 15 minutes
+            if (count % 30 === 0) {
+                let time_since = 30 * count;
+                log_message('CRIT', 'Websocket Error', `Attempting to re-connect for the ${count} time. It has been ${time_since} seconds since we lost connection.`);
+            }
+            websocket_client.connect();
+        }
+        else {
+            clearInterval(interval);
+        }
+    }, 3000);
+});
+
 
 // set up a simple api for the monitor
 const app = express();
