@@ -207,7 +207,7 @@ app.get('/points', (req, res) => {
     }
     
     getDB().then((db) => {
-        return db.collection('points').find({ "time": { $gte: req.query.start, $lte: req.query.end }}).toArray();
+        return db.collection('points').find({ "time": { $gte: new Date(req.query.start), $lte: new Date(req.query.end) }}).toArray();
     }).then((points) => {
         res.send({
             result: points
