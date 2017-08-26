@@ -11,6 +11,8 @@ import { MongoClient, ObjectId } from 'mongodb';
 import express from 'express';
 import nodemailer from 'nodemailer';
 
+import cors from 'cors';
+
 const EMA_LENGTH = 12 * 60 * 1000; // 12 minutes
 
 const USD = 'USD';
@@ -183,6 +185,8 @@ websocket_client.on('close', (data) => {
 // set up a simple api for the monitor
 const app = express();
 
+app.all('/*', cors()); //handle cross origin requests with this middleware
+
 app.get('/all_time_high', (req, res) => {
     res.send({
         result: all_time_high
@@ -207,7 +211,10 @@ app.get('/points', (req, res) => {
     }
     
     getDB().then((db) => {
-        return db.collection('points').find({ "time": { $gte: new Date(req.query.start), $lte: new Date(req.query.end) }}).toArray();
+        return db.collection('points')
+            .find({ time: { $gte: new Date(req.query.start), $lte: new Date(req.query.end) }})
+            .sort({time: 1})
+            .toArray();
     }).then((points) => {
         res.send({
             result: points
