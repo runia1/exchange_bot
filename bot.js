@@ -4,7 +4,7 @@
 
 'use strict';
 
-import { AuthenticatedClient, WebsocketClient } from 'gdax';
+import { AuthenticatedClient, WebsocketClient, OrderbookSync } from 'gdax';
 import MovingAverage from 'moving-average';
 import { Exponential_Moving_Average } from './my_modules/exponential-moving-average';
 import { MongoClient, ObjectId } from 'mongodb';
@@ -69,9 +69,6 @@ else {
 // create the
 const rest_client = new AuthenticatedClient(gdax_api_keys.key, gdax_api_keys.secret, gdax_api_keys.passphrase, gdax_api_uri);
 
-const websocket_client = new WebsocketClient([PRODUCT_ID], gdax_wss_uri, gdax_api_keys);
-
-
 // get and store our current position
 let btc_holdings = 0.00;
 let usd_holdings = 0.00;
@@ -102,6 +99,28 @@ rest_client.request('get', ['position']).then((data) => {
   throw new Error(err.message);
 });
 
+
+const orderbook_sync = new OrderbookSync([PRODUCT_ID]);
+
+orderbook_sync.on('message', (data) => {
+  //console.log(data);
+
+  console.log(orderbook_sync.books[PRODUCT_ID].state());
+});
+
+orderbook_sync.on('error', (err) => {
+  console.error(err);
+  // TODO: log a CRIT and reconnect.
+});
+
+orderbook_sync.on('close', (data) => {
+  console.error(data);
+  // TODO: log a CRIT and reconnect.
+});
+
+
+/*
+const websocket_client = new WebsocketClient([PRODUCT_ID], gdax_wss_uri, gdax_api_keys);
 
 // get what the all time high is and keep track of changes
 // TODO: we could make this do an actual lookup someday.
@@ -202,8 +221,7 @@ app.use('*', (req, res) => {
 });
 
 app.listen(80);
-
-
+*/
 
 // intercept bad things :(
 process.on('uncaughtException', (exception) => {
