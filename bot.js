@@ -30,7 +30,7 @@ let side = BITCOIN;
 let operation_pending = false;
 
 // ############### YOU MUST UPDATE THIS ANYTIME YOU MANUALLY TRANSFER FUNDS INTO / OUT OF GDAX!!!! #################
-const USD_TOTAL_INVESTMENT = 1200.00;
+const USD_TOTAL_INVESTMENT = 2200.00;
 
 // do some generic validation
 let args = {};
@@ -97,8 +97,9 @@ websocket_client.on('message', (data) => {
     
     if (!operation_pending) {
         // TODO: logic to make trade or not
-        
-        
+      console.dir(data);
+
+        /*
         // if we are currently exposed, side === BTC... check if we need to do anything
         if (side) {
             // sell and send an email if the price drops too far from the all time high
@@ -117,12 +118,15 @@ websocket_client.on('message', (data) => {
         else {
 
         }
+        */
     }
-    
+
+    /*
     // TODO: update holdings if it was a match and I am one of the parties..
     if () {
         get_position();
     }
+    */
     
     // update all_time_high if it should be updated
     if (data.price > all_time_high) {

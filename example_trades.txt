@@ -1,0 +1,36 @@
+// Buy - taker
+{ type: 'match',
+  trade_id: 20309082,
+  maker_order_id: '44d0c734-21a5-4e6f-93a8-85c0bd800dbf',
+  taker_order_id: '8ea62e62-c06a-4cf9-822f-509588d30534',
+  side: 'buy',
+  size: '0.01000000',
+  price: '4565.00000000',
+  product_id: 'BTC-USD',
+
+  taker_user_id: '59591f4785c8e30962559fd9',
+  user_id: '59591f4785c8e30962559fd9',
+  taker_profile_id: '468c37c6-c0c9-46a2-a777-7608243bb104',
+  profile_id: '468c37c6-c0c9-46a2-a777-7608243bb104',
+
+  sequence: 3956953184,
+  time: '2017-09-04T22:13:06.039000Z' }
+
+// Sell - maker
+{ type: 'match',
+  trade_id: 20309182,
+  maker_order_id: '4b8fc5fe-fd7f-4e68-8d32-c88a52b46054',
+  taker_order_id: '8a9fa9a5-71d3-4008-8114-f9b70bf5e9ac',
+  side: 'buy',
+  size: '0.01002346',
+  price: '4543.16000000',
+  product_id: 'BTC-USD',
+
+  maker_user_id: '59591f4785c8e30962559fd9',
+  user_id: '59591f4785c8e30962559fd9',
+  maker_profile_id: '468c37c6-c0c9-46a2-a777-7608243bb104',
+  profile_id: '468c37c6-c0c9-46a2-a777-7608243bb104',
+
+  sequence: 3956961548,
+  time: '2017-09-04T22:15:10.692000Z' }
+
