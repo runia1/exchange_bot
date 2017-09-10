@@ -4,7 +4,7 @@
 
 'use strict';
 
-import { AuthenticatedClient, WebsocketClient, OrderbookSync } from 'gdax';
+import { AuthenticatedClient, WebsocketClient } from 'gdax';
 import MovingAverage from 'moving-average';
 import { Exponential_Moving_Average } from './my_modules/exponential-moving-average';
 import { MongoClient, ObjectId } from 'mongodb';
@@ -30,7 +30,7 @@ let side = BITCOIN;
 let operation_pending = false;
 
 // ############### YOU MUST UPDATE THIS ANYTIME YOU MANUALLY TRANSFER FUNDS INTO / OUT OF GDAX!!!! #################
-const USD_TOTAL_INVESTMENT = 2200.00;
+const USD_TOTAL_INVESTMENT = 1500.00;
 
 // do some generic validation
 let args = {};
@@ -72,6 +72,7 @@ else {
   gdax_api_keys = require(`${__dirname}/../keys/gdax.json`);
 }
 
+/*
 // create the GDAX clients
 const rest_client = new AuthenticatedClient(gdax_api_keys.key, gdax_api_keys.secret, gdax_api_keys.passphrase, gdax_api_uri);
 const websocket_client = new WebsocketClient([PRODUCT_ID], gdax_wss_uri, gdax_api_keys);
@@ -98,8 +99,7 @@ websocket_client.on('message', (data) => {
     if (!operation_pending) {
         // TODO: logic to make trade or not
       console.dir(data);
-
-        /*
+        
         // if we are currently exposed, side === BTC... check if we need to do anything
         if (side) {
             // sell and send an email if the price drops too far from the all time high
@@ -118,15 +118,15 @@ websocket_client.on('message', (data) => {
         else {
 
         }
-        */
     }
-
-    /*
-    // TODO: update holdings if it was a match and I am one of the parties..
-    if () {
+      
+    // update holdings if it was a match and I am one of the parties..
+    // the data will have a special property 'user_id' if my account was one of the parties involved in the trade.
+    if ('user_id' in data) {
+        // NOTE: we could make this faster by doing the math ourselves instead of calling their api, but this approach
+        // ensures that their platform is always the source of truth and not us.
         get_position();
     }
-    */
     
     // update all_time_high if it should be updated
     if (data.price > all_time_high) {
@@ -176,7 +176,7 @@ websocket_client.on('close', (data) => {
         }
     }, 3000);
 });
-
+*/
 
 // set up a simple api for the monitor
 const app = express();
@@ -286,6 +286,7 @@ function get_position() {
  * @param coin_amount
  * @returns {number}
  */
+// TODO: maybe make one specifically for selling / buying
 const calc_taker_fees = (coin_price, coin_amount) => {
   return coin_price * coin_amount * GDAX_FEE;
 };
@@ -297,6 +298,7 @@ const calc_taker_fees = (coin_price, coin_amount) => {
  * @param reason
  */
 const emergency_sell_off = (current_price, reason) => {
+  /*
   operation_pending = true;
   
   rest_client.sell({
@@ -316,6 +318,7 @@ const emergency_sell_off = (current_price, reason) => {
   }).catch((err) => {
     log_message('CRIT', 'emergency sell failed', `tried to do an emergency sell at: ${current_price}, but failed due to: ${err}. Original reason for trying to sell: ${reason}`);  
   });
+  */
 };
 
 /**
