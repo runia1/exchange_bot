@@ -2,14 +2,13 @@
   "name": "exchange_bot",
   "version": "0.0.1",
   "scripts": {
-    "build": "babel bot.js -d build && babel my_modules -d build/my_modules",
-    "run": "node build/bot.js",
-    "test": "npm run build && npm run run"
+    "build:bot": "babel src/bot.js -d build && babel src/utils.js -d build",
+    "build:api": "babel src/api.js -d build && babel src/utils.js -d build"
   },
   "dependencies": {
     "cors": "^2.8.4",
     "express": "^4.15.0",
-    "gdax": "github:coinbase/gdax-node",
+    "gdax": "373mich/gdax-node#1e6d54dece1ed7f20792385a950c5e2c43d5a8fd",
     "mongodb": "^2.2.31",
     "moving-average": "^0.1.1",
     "nodemailer": "^4.0.1",

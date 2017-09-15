@@ -6,14 +6,18 @@
 
 import { AuthenticatedClient, WebsocketClient } from 'gdax';
 import MovingAverage from 'moving-average';
-import { Exponential_Moving_Average } from './my_modules/exponential-moving-average';
-import { MongoClient, ObjectId } from 'mongodb';
 import express from 'express';
-import nodemailer from 'nodemailer';
+
+import { getDB, logMessage } from './utils';
 
 import cors from 'cors';
 
-const EMA_LENGTH = 12 * 60 * 1000; // 12 minutes
+const minutes = 60*1000;
+
+const ema1 = MovingAverage(12 * minute); // 12 minutes
+const ema2 = MovingAverage(12 * 5 * minutes); // 12 * 5 min chunks = 12 candlestick ema for 5 min candlesticks == 60 min ema
+const ema3 = MovingAverage(12 * 15 * minutes); // 12 * 15 min chunks = 12 candlestick ema for 15 min candlesticks == 180 min ema
+const ema4 = MovingAverage(11 * 24 * 60 * minute); // 11 days
 
 const USD = false;
 const BITCOIN = true;
@@ -32,50 +36,14 @@ let operation_pending = false;
 // ############### YOU MUST UPDATE THIS ANYTIME YOU MANUALLY TRANSFER FUNDS INTO / OUT OF GDAX!!!! #################
 const USD_TOTAL_INVESTMENT = 1500.00;
 
-// do some generic validation
-let args = {};
-process.argv.forEach((val, index) => {
-    if (index > 1) {
-        if (val.includes('=')) {
-            const val_array = val.split('=');
-            args[val_array[0]] = val_array[1];
-        }
-        else {
-            throw new Error(`Called exchange_bot with invalid argument: ${$val}`);
-        }
-    }
-});
-console.log('exchange_bot started with cmdline args:');
-console.dir(args);
-console.log();
-
-// make sure we have a 'mode' arg.  This is required
-if (!args.hasOwnProperty('mode') || (args.mode !== 'test' && args.mode !== 'prod')) {
-    throw new Error('Required argument "mode=test|prod" was not provided.');
-}
-
 // get the correct credentials from key files
-let gdax_api_uri = null;
-let gdax_wss_uri = null;
-let gdax_api_keys = null;
+const gdax_api_uri = 'https://api.gdax.com';
+const gdax_wss_uri = 'wss://ws-feed.gdax.com';
+const gdax_api_keys = require('../../keys/gdax.json');
 
-if (args.mode === 'test') {
-  gdax_api_uri = 'https://api-public.sandbox.gdax.com';
-  // TODO: this doesn't seem to work..
-  // gdax_wss_uri = 'wss://ws-feed-public.sandbox.gdax.com';
-  gdax_wss_uri = 'wss://ws-feed.gdax.com';
-  gdax_api_keys = require(`${__dirname}/../keys/gdax_sandbox.json`);
-}
-else {
-  gdax_api_uri = 'https://api.gdax.com';
-  gdax_wss_uri = 'wss://ws-feed.gdax.com';
-  gdax_api_keys = require(`${__dirname}/../keys/gdax.json`);
-}
-
-/*
 // create the GDAX clients
 const rest_client = new AuthenticatedClient(gdax_api_keys.key, gdax_api_keys.secret, gdax_api_keys.passphrase, gdax_api_uri);
-const websocket_client = new WebsocketClient([PRODUCT_ID], gdax_wss_uri, gdax_api_keys);
+const websocket_client = new WebsocketClient([PRODUCT_ID], ['user', 'matches', 'heartbeat'], gdax_wss_uri, gdax_api_keys);
 
 // get initial position
 get_position();
@@ -84,22 +52,38 @@ get_position();
 // TODO: we could make this do an actual lookup someday.. maybe from our database
 let all_time_high = 4980.00;
 
-const ma = MovingAverage(EMA_LENGTH);
-
 // monitor real-time price changes
+let lastSequence = 0;
 websocket_client.on('message', (data) => {
+
+  // we only care about matches.. that is when currency actually changes hands.
   if (data.type === 'match') {
+
+    // we have to make sure these matches are in correct sequence otherwise our ema will not calculate correctly.
+    // if it is not in the correct sequence we simply throw it out.. yes our ema will be slightly off but that is ok.
+    if (data.sequence < lastSequence) {
+      logMessage('ERROR', 'Websocket Error', `Incorrect sequence order. Expected > ${lastSequence}, got: ${data.sequence}`);
+      return;
+    }
+
+    lastSequence = data.sequence;
+
     // parse the time here and feed it into the ema engine
     const date_timestamp = Date.parse(data.time);
 
-    // calc ema
-    ma.push(date_timestamp, data.price);
-    const ma1 = ma.movingAverage();
+    // calc emas
+    ema1.push(date_timestamp, data.price);
+    ema2.push(date_timestamp, data.price);
+    ema3.push(date_timestamp, data.price);
+    ema4.push(date_timestamp, data.price);
+
+    const ma1 = ema1.movingAverage();
+    const ma2 = ema2.movingAverage();
+    const ma3 = ema3.movingAverage();
+    const ma4 = ema4.movingAverage();
     
     if (!operation_pending) {
-        // TODO: logic to make trade or not
-      console.dir(data);
-        
+        /*
         // if we are currently exposed, side === BTC... check if we need to do anything
         if (side) {
             // sell and send an email if the price drops too far from the all time high
@@ -118,8 +102,9 @@ websocket_client.on('message', (data) => {
         else {
 
         }
+        */
     }
-      
+
     // update holdings if it was a match and I am one of the parties..
     // the data will have a special property 'user_id' if my account was one of the parties involved in the trade.
     if ('user_id' in data) {
@@ -138,22 +123,25 @@ websocket_client.on('message', (data) => {
       return db.collection('points').insertOne({
           time: new Date(date_timestamp), // turn it into a Date object here
           price: data.price,
-          ema1: ma1
+          ema1: ma1,
+          ema2: ma2,
+          ema3: ma3,
+          ema4: ma4
       });
     }).catch((err) => {
-      log_message('CRIT', 'Database failure', `Failed to get database connection, reason: ${err}`);
+      logMessage('CRIT', 'Database failure', `Failed to get database connection, reason: ${err}`);
     });
   }
 });
 
 // if there is an error let me know.
 websocket_client.on('error', (err) => {
-    log_message('ERROR', 'Websocket Error', err);
+    logMessage('ERROR', 'Websocket Error', err);
 });
 
 // if it closes reconnect
 websocket_client.on('close', (data) => {
-    log_message('ERROR', 'Websocket Error', `websocket closed unexpectedly with data: ${data}. Attempting to re-connect.`);
+    logMessage('ERROR', 'Websocket Error', `websocket closed unexpectedly with data: ${data}. Attempting to re-connect.`);
 
     // try to re-connect the first time...
     websocket_client.connect();
@@ -167,7 +155,7 @@ websocket_client.on('close', (data) => {
             // send me a email if it keeps failing every 30/2 = 15 minutes
             if (count % 30 === 0) {
                 let time_since = 30 * count;
-                log_message('CRIT', 'Websocket Error', `Attempting to re-connect for the ${count} time. It has been ${time_since} seconds since we lost connection.`);
+                logMessage('CRIT', 'Websocket Error', `Attempting to re-connect for the ${count} time. It has been ${time_since} seconds since we lost connection.`);
             }
             websocket_client.connect();
         }
@@ -176,9 +164,8 @@ websocket_client.on('close', (data) => {
         }
     }, 3000);
 });
-*/
 
-// set up a simple api for the monitor
+// set up a simple api for the monitor, this api isn't in the api script b/c it depends on data from the bot algorithm.
 const app = express();
 
 app.all('/*', cors()); //handle cross origin requests with this middleware
@@ -198,33 +185,6 @@ app.get('/position', (req, res) => {
     });
 });
 
-app.get('/points', (req, res) => {
-    if (!('start' in req.query) || !('end' in req.query)) {
-        res.status(400).send({
-            result: false,
-            message: '/points endpoint must include start and end params'
-        });
-    }
-    
-    getDB().then((db) => {
-        return db.collection('points')
-            .find({ time: { $gte: new Date(req.query.start), $lte: new Date(req.query.end) }})
-            .sort({time: 1})
-            .toArray();
-    }).then((points) => {
-        res.send({
-            result: points
-        });
-    }).catch((err) => {
-        res.status(500).send({
-            result: false,
-            message: 'could not get /points'
-        });
-        
-        log_message('CRIT', 'Database failure', `Failed to get database connection, reason: ${err}`)
-    });
-});
-
 // endpoints not yet handled
 app.use('*', (req, res) => {
     res.send({
@@ -233,15 +193,15 @@ app.use('*', (req, res) => {
     });
 });
 
-app.listen(80);
+app.listen(8081);
 
 // intercept bad things :(
 process.on('uncaughtException', (exception) => {
-  log_message('CRIT', 'Process Unhandled Exception', exception.message);
+  logMessage('CRIT', 'Process Unhandled Exception', exception.message);
 });
 
 process.on('unhandledRejection', (reason, p) => {
-  log_message('CRIT', 'Process Unhandled Promise Rejection', `Unhandled Rejection, reason: ${reason}`);
+  logMessage('CRIT', 'Process Unhandled Promise Rejection', `Unhandled Rejection, reason: ${reason}`);
 });
 
 //############################## utility functions ##################################
@@ -251,7 +211,6 @@ process.on('unhandledRejection', (reason, p) => {
  */
 function get_position() {
     operation_pending = true;
-    
     rest_client.request('get', ['position']).then((data) => {
         if (data.status !== 'active') {
             throw new Error('Cannot proceed, your account status is not active.');
@@ -298,7 +257,6 @@ const calc_taker_fees = (coin_price, coin_amount) => {
  * @param reason
  */
 const emergency_sell_off = (current_price, reason) => {
-  /*
   operation_pending = true;
   
   rest_client.sell({
@@ -314,81 +272,13 @@ const emergency_sell_off = (current_price, reason) => {
     side = USD;
     operation_pending = false;
     
-    log_message('EMERG', reason, `BTC has dropped to: ${current_price} and your BTC holdings were sold bc ${reason}.`);
+    logMessage('EMERG', reason, `BTC has dropped to: ${current_price} and your BTC holdings were sold bc ${reason}.`);
   }).catch((err) => {
-    log_message('CRIT', 'emergency sell failed', `tried to do an emergency sell at: ${current_price}, but failed due to: ${err}. Original reason for trying to sell: ${reason}`);  
-  });
-  */
-};
-
-/**
- * log a message and send it in an email
- *
- * @param log_level
- * @param topic
- * @param msg
- */
-const log_message = (log_level, topic, msg) => {
-  msg = `${new Date()} ${log_level} => topic: ${topic} msg: ${msg}`;
-
-  // log it
-  console.log(msg);
-
-  // email it
-  send_email(topic, msg);
-};
-
-/**
- * Send an email
- *
- * @param subject
- * @param text
- */
-const send_email = (subject, text) => {
-  const mailOptions = {
-    from: gmailCredentials.email,
-    to: gmailCredentials.email,
-    subject: `Exchange bot: ${subject}`,
-    text: text
-  };
-
-  transporter.sendMail(mailOptions, (error, info) => {
-    if (error) {
-      console.log(`${new Date()} CRIT => Failed to send email on above log line. Error: ${error}`);
-    }
+    logMessage('CRIT', 'emergency sell failed', `tried to do an emergency sell at: ${current_price}, but failed due to: ${err}. Original reason for trying to sell: ${reason}`);  
   });
 };
 
 
-// just connect the first time and the other times respond with global_db
-let global_db = null;
-const getDB = () => {
-    return new Promise((resolve, reject) => {
-        if (global_db !== null) {
-            resolve(global_db);
-        }
-        else {
-            const mongoCredentials = require('../keys/mongo.json');
-            MongoClient.connect(`mongodb://${mongoCredentials.user}:${mongoCredentials.pwd}@localhost:27017/trading?authMechanism=${mongoCredentials.authMechanism}&authSource=${mongoCredentials.authSource}`, (err, db) => {
-                if(err) {
-                    reject('Error connecting to database.');
-                }
-                else {
-                    global_db = db;
-                    resolve(db);
-                }
-            });
-        }
-    });
-};
 
 
-// set up nodemailer
-const gmailCredentials = require('../keys/gmail.json');
-const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-        user: gmailCredentials.email,
-        pass: gmailCredentials.pass
-    }
-});
+
