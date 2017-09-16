@@ -4,23 +4,13 @@ import nodemailer from 'nodemailer';
 // just connect the first time and the other times respond with global_db
 let global_db = null;
 const getDB = () => {
-  return new Promise((resolve, reject) => {
-    if (global_db !== null) {
-      resolve(global_db);
-    }
-    else {
-      const mongoCredentials = require('../../keys/mongo.json');
-      MongoClient.connect(`mongodb://${mongoCredentials.user}:${mongoCredentials.pwd}@localhost:27017/trading?authMechanism=${mongoCredentials.authMechanism}&authSource=${mongoCredentials.authSource}`, (err, db) => {
-        if(err) {
-          reject('Error connecting to database.');
-        }
-        else {
-          global_db = db;
-          resolve(db);
-        }
-      });
-    }
-  });
+  if (global_db !== null) {
+    return Promise.resolve(global_db);
+  }
+  else {
+    const mongoCredentials = require('../keys/mongo.json');
+    return MongoClient.connect(`mongodb://${mongoCredentials.user}:${mongoCredentials.pwd}@localhost:27017/trading?authMechanism=${mongoCredentials.authMechanism}&authSource=${mongoCredentials.authSource}`);
+  }
 };
 
 /**
@@ -36,8 +26,16 @@ const logMessage = (log_level, topic, msg) => {
   // log it
   console.log(msg);
 
-  // email it
-  send_email(topic, msg);
+  switch(log_level) {
+      case 'CRIT':
+      case 'ERROR':
+      case 'EMERG':
+          // email it
+          sendEmail(topic, msg);
+          break;
+      default:
+        // do nothing, you can use `tail:<app name>` to see all other logs
+  }
 };
 
 /**
@@ -46,7 +44,7 @@ const logMessage = (log_level, topic, msg) => {
  * @param subject
  * @param text
  */
-const send_email = (subject, text) => {
+const sendEmail = (subject, text) => {
   const mailOptions = {
     from: gmailCredentials.email,
     to: gmailCredentials.email,
@@ -62,7 +60,7 @@ const send_email = (subject, text) => {
 };
 
 // set up nodemailer
-const gmailCredentials = require('../../keys/gmail.json');
+const gmailCredentials = require('../keys/gmail.json');
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
@@ -73,5 +71,6 @@ const transporter = nodemailer.createTransport({
 
 module.exports = {
   getDB,
-  logMessage
+  logMessage,
+  sendEmail
 };

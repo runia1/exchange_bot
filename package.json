@@ -2,8 +2,7 @@
   "name": "exchange_bot",
   "version": "0.0.1",
   "scripts": {
-    "build:bot": "babel src/bot.js -d build && babel src/utils.js -d build",
-    "build:api": "babel src/api.js -d build && babel src/utils.js -d build"
+    "build:all": "rm -rf build && babel src -d build --copy-files"
   },
   "dependencies": {
     "cors": "^2.8.4",

@@ -1,6 +1,7 @@
 import express from 'express';
-import { getDB, logMessage } from './utils';
 import cors from 'cors';
+
+import { getDB, logMessage } from './utils';
 
 // set up a simple api for the monitor
 const app = express();
@@ -10,7 +11,7 @@ app.all('/*', cors());
 
 app.get('/points', (req, res) => {
   if (!('start' in req.query) || !('end' in req.query)) {
-    res.status(400).send({
+    return res.status(400).send({
       result: false,
       message: '/points endpoint must include start and end params'
     });
@@ -18,7 +19,7 @@ app.get('/points', (req, res) => {
 
   getDB().then((db) => {
     return db.collection('points')
-      .find({ time: { $gte: new Date(req.query.start), $lte: new Date(req.query.end) }})
+      .find({ time: { $gte: new Date(req.query.start), $lte: new Date(req.query.end) }}, { _id: 0 })
       .sort({time: 1})
       .toArray();
   }).then((points) => {

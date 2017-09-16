@@ -1,12 +1,11 @@
 #!/bin/bash
 
 # build
-alias build:bot='npm run build:bot'
-alias build:api='npm run build:api'
+alias build:all='npm run build:all'
 
 # deploy
-alias deploy:bot='node build/src/bot.js &> logs/bot.log &'
-alias deploy:api='node build/src/api.js &> logs/api.log &'
+alias deploy:bot='node build/bot-runner.js &> logs/bot.log &'
+alias deploy:api='node build/api.js &> logs/api.log &'
 
 # kill
 alias kill:bot="kill \$(ps aux | grep node.*bot | grep -v grep | awk '{print \$2}')"
