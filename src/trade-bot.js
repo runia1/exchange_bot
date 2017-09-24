@@ -4,7 +4,6 @@
 import MovingAverage from 'moving-average';
 
 import { getDB, logMessage } from './utils';
-import {PROD} from "./client-provider";
 
 // sides
 const USD = false;
@@ -23,8 +22,7 @@ const USD_TOTAL_INVESTMENT = 1500.00;
 const TRADE_TIMEOUT = 2000; // timout trade if a match doesn't occur within 2 seconds
 
 class TradeBot {
-    // constructor(restClient, websocketClient, emaLength, buyThreshold, sellThreshold, dropThreshold, store = false) {
-    constructor(config = { restClient, websocketClient, emaLength, buyThreshold, sellThreshold, dropThreshold, store = false } ) { 
+    constructor(restClient, websocketClient, emaLength, buyThreshold, sellThreshold, dropThreshold, store = false) {
         this._emaLength =  emaLength;
         this._buyThreshold = buyThreshold;
         this._sellThreshold = sellThreshold;
@@ -61,7 +59,9 @@ class TradeBot {
      */
     fetchPosition() {
         this._operationPending = true;
-        restClient.request('get', ['position']).then((data) => {
+        this._restClient.request('get', [
+          'position'
+        ]).then((data) => {
             if (data.status !== 'active') {
                 throw new Error('Cannot proceed, your account status is not active.');
             }
@@ -83,7 +83,9 @@ class TradeBot {
 
             this._operationPending = false;
         }).catch((err) => {
-            throw new Error(err.message);
+            logMessage('CRIT', 'Fetch Position', `Could not fetch position, err: ${err}`);
+            // retry
+            this.fetchPosition();
         });
     }
     
@@ -225,17 +227,17 @@ class TradeBot {
             // if we want to store the points store them
             if (this._store) {
                 // put the new ema in the db
-                getDB()
-                    .then((db) => {
-                        return db.collection('points').insertOne({
-                            time: new Date(dateTimestamp), // turn it into a Date object here
-                            price: data.price,
-                            ema: ema
-                        });
-                    })
-                    .catch((err) => {
-                        logMessage('CRIT', 'Database failure', `Failed to get database connection, reason: ${err}`);
+                getDB().then((db) => {
+                    return db.collection('points').insertOne({
+                        time: new Date(dateTimestamp), // turn it into a Date object here
+                        price: data.price,
+                        ema: ema
                     });
+                }).then((result) => {
+                    // TOOD: make sure it was inserted correctly
+                }).catch((err) => {
+                    logMessage('CRIT', 'Database failure', `Failed to get database connection, reason: ${err}`);
+                });
             }
         }
     }
@@ -244,53 +246,45 @@ class TradeBot {
         this._operationPending = true;
         
         const buyPrice = price - 0.01;
-        const body = {
-            type: 'limit',
-            price: buyPrice,                        // USD
-            size: this._usdHoldings / buyPrice,     // BTC
-            product_id: PRODUCT_ID,
-        };
-        
-        this._restClient.post(['orders'], { body })
-            .then((result) => {
-                this._tradeTimer = setTimeout(() => {
-                    this.cancel();
-                }, TRADE_TIMEOUT);
-                logMessage('DEBUG', 'Trade Logic', `Executing a 'buy' limit order at: ${buyPrice} because of slope: ${slope}, response: ${result}`);
-            })
-            .catch((err) => {
-                logMessage('CRIT', 'Trade Logic', `Failed to execute a 'buy' limit trade at: ${buyPrice} which was triggered bc of slope: ${slope}`);
-            });
+        this._restClient.post(['orders'], {
+          type: 'limit',
+          price: buyPrice,                        // USD
+          size: this._usdHoldings / buyPrice,     // BTC
+          product_id: PRODUCT_ID,
+        }).then((result) => {
+            this._tradeTimer = setTimeout(() => {
+                this.cancel();
+            }, TRADE_TIMEOUT);
+            logMessage('DEBUG', 'Trade Logic', `Executing a 'buy' limit order at: ${buyPrice} because of slope: ${slope}, response: ${result}`);
+        }).catch((err) => {
+            logMessage('CRIT', 'Trade Logic', `Failed to execute a 'buy' limit trade at: ${buyPrice} which was triggered bc of slope: ${slope}, err: ${err}`);
+        });
     }
     
     sell(price, slope) {
         this._operationPending = true;
 
         const sellPrice = price + 0.01;
-        const body = {
-            type: 'limit',
-            price: sellPrice,           // USD
-            size: this._btcHoldings,    // BTC
-            product_id: PRODUCT_ID,
-        };
-
-        this._restClient.post(['orders'], { body })
-            .then((result) => {
-                this._tradeTimer = setTimeout(() => {
-                    this.cancel();
-                }, TRADE_TIMEOUT);
-                logMessage('DEBUG', 'Trade Logic', `Executing a 'buy' limit order at: ${buyPrice} because of slope: ${slope}, response: ${result}`);
-            })
-            .catch((err) => {
-                logMessage('CRIT', 'Trade Logic', `Failed to execute a 'buy' limit trade at: ${buyPrice} which was triggered bc of slope: ${slope}`);
-            });
+        this._restClient.post(['orders'], {
+          type: 'limit',
+          price: sellPrice,           // USD
+          size: this._btcHoldings,    // BTC
+          product_id: PRODUCT_ID,
+        }).then((result) => {
+            this._tradeTimer = setTimeout(() => {
+                this.cancel();
+            }, TRADE_TIMEOUT);
+            logMessage('DEBUG', 'Trade Logic', `Executing a 'buy' limit order at: ${sellPrice} because of slope: ${slope}, response: ${result}`);
+        }).catch((err) => {
+            logMessage('CRIT', 'Trade Logic', `Failed to execute a 'buy' limit trade at: ${sellPrice} which was triggered bc of slope: ${slope}, err: ${err}`);
+        });
     }
     
     cancel() {
         // a trade did not occur, lets cancel this order
         
-        
-        
+        // TODO: make call to cancel order.
+        this._operationPending = false;
     }
     
     emergencySell(currentPrice, reason) {

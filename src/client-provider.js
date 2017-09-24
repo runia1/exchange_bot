@@ -43,7 +43,7 @@ class ClientProvider  {
 
 
 export {
-    DataProvider,
+    ClientProvider,
     PROD,
     TEST
 };

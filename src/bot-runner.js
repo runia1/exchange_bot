@@ -1,6 +1,7 @@
 
 import { ClientProvider, PROD, TEST } from './client-provider';
 import { TradeBot } from './trade-bot';
+import { logMessage } from './utils';
 
 import express from 'express';
 import cors from 'cors';
@@ -12,6 +13,7 @@ const EMA_LENGTH = 12 * MINUTES; // 12 minutes
 const BUY_THRESHOLD = 0.0000025;
 const SELL_THRESHOLD = -0.0000025;
 const DROP_THRESHOLD = 500.00; // if it drops this far from the all_time_high sell and send an email!
+const store = false;
 
 const PRODUCT_ID = 'BTC-USD';
 
@@ -20,7 +22,7 @@ const clientSource = new ClientProvider(TEST, PRODUCT_ID);
 const restClient = clientSource.getRestClient();
 const websocketClient = clientSource.getWebsocketClient();
 
-const tradeBot = new TradeBot(restClient, websocketClient, EMA_LENGTH, BUY_THRESHOLD, SELL_THRESHOLD, DROP_THRESHOLD);
+const tradeBot = new TradeBot(restClient, websocketClient, EMA_LENGTH, BUY_THRESHOLD, SELL_THRESHOLD, DROP_THRESHOLD, store);
 
 tradeBot.run();
 
