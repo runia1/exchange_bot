@@ -8,8 +8,8 @@ alias deploy:bot='node build/bot-runner.js &> logs/bot.log &'
 alias deploy:api='node build/api.js &> logs/api.log &'
 
 # kill
-alias kill:bot="kill \$(ps aux | grep node.*bot | grep -v grep | awk '{print \$2}')"
-alias kill:api="kill \$(ps aux | grep node.*api | grep -v grep | awk '{print \$2}')"
+alias kill:bot="kill \$(ps aux | grep node.*bot | grep -v grep | awk '{print \$2}') && ps aux | grep node"
+alias kill:api="kill \$(ps aux | grep node.*api | grep -v grep | awk '{print \$2}') && ps aux | grep node"
 
 #tail
 alias tail:bot='tail -f logs/bot.log'
