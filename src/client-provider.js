@@ -11,7 +11,7 @@ const TEST = 'test';
  */
 class ClientProvider  {
     
-    constructor(mode, productId) {
+    constructor(mode, productId, start, end) {
         this._productId = productId;
         
         // use the real GDAX Clients
@@ -28,7 +28,7 @@ class ClientProvider  {
         // use the Mock Clients
         else {
             this.restClient = new MockRestClient();
-            this.websocketClient = new MockWebsocketClient();
+            this.websocketClient = new MockWebsocketClient(start, end);
         }
     }
 

@@ -1,4 +1,3 @@
-
 'use strict';
 
 import { getDB, logMessage } from './utils';

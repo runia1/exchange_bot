@@ -1,3 +1,5 @@
+'use strict';
+
 import { MongoClient, ObjectId } from 'mongodb';
 import nodemailer from 'nodemailer';
 
@@ -72,5 +74,6 @@ const transporter = nodemailer.createTransport({
 module.exports = {
   getDB,
   logMessage,
-  sendEmail
+  sendEmail,
+  ObjectId
 };

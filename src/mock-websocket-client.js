@@ -1,5 +1,7 @@
+'use strict';
+
 import { EventEmitter } from 'events';
-import { getDB, logMessage } from './utils';
+import { getDB, ObjectId, logMessage } from './utils';
 
 class MockWebsocketClient extends EventEmitter {
     
@@ -9,41 +11,38 @@ class MockWebsocketClient extends EventEmitter {
         // make the socket look like something other than null...
         this.socket = {};
         
-        // lets wait a second and them emit an open
-        setTimout(() => {
-            this.emit('open');
-        }, 1000);
+        // lets wait half a second and them emit an open
+        setTimeout(() => {
+          this.emit('open');
 
-        // now lets start pulling historical data from the DB and emitting it.
-        getDB()
-            .then((db) => {
-                return db.collection('points')
-                    .find({ time: { $gte: new Date(start), $lte: new Date(end) }}, { time: 1, price: 1 })
-                    .sort({time: 1})
-                    .toArray();
-            })
-            .then((points) => {
-                let i = 1;
-                points.forEach((point) => {
-                    this.emit('message', {
-                        type: "match",
-                        //trade_id: 10,
-                        sequence: i++,
-                        //maker_order_id: "ac928c66-ca53-498f-9c13-a110027a60e8",
-                        //taker_order_id: "132fb6ae-456b-4654-b4e0-d681ac05cea1",
-                        time: point.time,
-                        //product_id: "BTC-USD",
-                        //size: "5.23512",
-                        price: point.price,
-                        //side: "sell"
-                    });
-                });
-            })
-            .catch((err) => {
-                logMessage('CRIT', 'MockWebsocketClient', `Database problem: ${err}`);
-            });
+          this.fetchPoints(start, end).then((done) => {
+            logMessage('DEBUG', 'MockWebsocketClient', `Done fetching points: ${done}`);
+          }).catch((err) => {
+            logMessage('CRIT', 'MockWebsocketClient', `Problem fetching points: ${err}`);
+          });
+        }, 500);
     }
-    
+
+    async fetchPoints(start, end) {
+      const perPage = 5000;
+      let lastId = start;
+      let points = [];
+
+      const db = await getDB();
+
+      while (lastId !== end) {
+        points = await db.collection('points')
+          .find({ _id: { $gt: ObjectId(lastId), $lte: ObjectId(end) } })
+          .limit(perPage)
+          .toArray();
+
+        for (let point of points) {
+          point.type = "match";
+          this.emit('message', point);
+        }
+      }
+    }
+
     connect() {
         
     }
