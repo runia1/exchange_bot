@@ -28,7 +28,7 @@ class MockWebsocketClient extends EventEmitter {
           this.emit('message', {
             type: 'match',
             user_id: '521c20b3d4ab09621f000011',
-            sequence: 1 // this will log an ERROR everytime but that's ok for testing...
+            sequence: 1 // this will log an ERROR every time but that's ok for testing...
           });
         });
     }
