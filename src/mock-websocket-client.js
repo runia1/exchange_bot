@@ -5,7 +5,7 @@ import { getDB, ObjectId, logMessage } from './utils';
 
 class MockWebsocketClient extends EventEmitter {
     
-    constructor(start, end) {
+    constructor(restClient, start, end) {
         super();
         
         // make the socket look like something other than null...
@@ -21,6 +21,16 @@ class MockWebsocketClient extends EventEmitter {
             logMessage('CRIT', 'MockWebsocketClient', `Problem fetching points: ${err}`);
           });
         }, 500);
+
+        // if the restClient emits a 'trade' we need to emit a match so that it looks like the
+        // trade resulted in a match.
+        restClient.on('trade', (data) => {
+          this.emit('message', {
+            type: 'match',
+            user_id: '521c20b3d4ab09621f000011',
+            sequence: 1 // this will log an ERROR everytime but that's ok for testing...
+          });
+        });
     }
 
     async fetchPoints(start, end) {
@@ -43,9 +53,8 @@ class MockWebsocketClient extends EventEmitter {
       }
     }
 
-    connect() {
-        
-    }
+    // stubbed out
+    connect() {}
 }
 
 export {

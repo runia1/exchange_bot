@@ -45,8 +45,6 @@ class TradeBot {
         this._lastEMA = 0;
         this._lastTime = null;
         
-        this._allTimeProfit = 0.00;
-        
         this._tradeTimer = null;
 
         // fetch initial position
@@ -81,6 +79,15 @@ class TradeBot {
             logMessage('DEBUG', 'Position Info', `Side: ${this._side ? 'BTC' : 'USD'}`);
 
             this._operationPending = false;
+
+            return getDB();
+        }).then((db) => {
+            // store the new position
+            return db.collection('positions').insertOne({
+                time: new Date(),
+                usd: this._usdHoldings,
+                btc: this._btcHoldings
+            });
         }).catch((err) => {
             logMessage('CRIT', 'Fetch Position', `Could not fetch position, err: ${err}`);
             // retry
@@ -151,6 +158,17 @@ class TradeBot {
         // we only care about matches.. that is when currency actually changes hands.
         if (data.type === 'match') {
 
+            // update holdings if it was a match and I am one of the parties..
+            // the data will have a special property 'user_id' if my account was one of the parties involved in the trade.
+            if ('user_id' in data) {
+                // kill the trade timer
+                clearInterval(this._tradeTimer);
+
+                // NOTE: we could make this faster by doing the math ourselves instead of calling their api, but this approach
+                // ensures that their platform is always the source of truth and not us so it seems ok to halt any trades until this is done.
+                this.fetchPosition();
+            }
+
             // we have to make sure these matches are in correct sequence otherwise our ema will not calculate correctly.
             // if it is not in the correct sequence we simply throw it out.. yes our ema will be slightly off but that is ok.
             if (data.sequence < this._lastSequence) {
@@ -173,7 +191,7 @@ class TradeBot {
             // need to re-assign these as fast as possible so that the next message coming in has the new values for calculations
             this._lastTime = dateTimestamp;
             this._lastEMA = ema;
-            
+
             if (!this._operationPending) {
                 // handle the divide by 0 problem.
                 if (Number.isFinite(slope)) {
@@ -206,17 +224,6 @@ class TradeBot {
                     this.emergencySell(data.price, 'price dropped below initial investment');
                 }
             }*/
-            
-            // update holdings if it was a match and I am one of the parties..
-            // the data will have a special property 'user_id' if my account was one of the parties involved in the trade.
-            if ('user_id' in data) {
-                // kill the trade timer
-                clearInterval(this._tradeTimer);
-                
-                // NOTE: we could make this faster by doing the math ourselves instead of calling their api, but this approach
-                // ensures that their platform is always the source of truth and not us so it seems ok to halt any trades until this is done.
-                this.fetchPosition();
-            }
 
             // update _allTimeHigh if it should be updated
             if (data.price > this._allTimeHigh) {
@@ -233,7 +240,7 @@ class TradeBot {
                         ema: ema
                     });
                 }).then((result) => {
-                    // TOOD: make sure it was inserted correctly
+                    // TODO: make sure it was inserted correctly???
                 }).catch((err) => {
                     logMessage('CRIT', 'Database failure', `Failed to get database connection, reason: ${err}`);
                 });
@@ -246,6 +253,7 @@ class TradeBot {
         
         const buyPrice = price - 0.01;
         this._restClient.post(['orders'], {
+          side: 'buy',
           type: 'limit',
           price: buyPrice,                        // USD
           size: this._usdHoldings / buyPrice,     // BTC
@@ -265,6 +273,7 @@ class TradeBot {
 
         const sellPrice = price + 0.01;
         this._restClient.post(['orders'], {
+          side: 'sell',
           type: 'limit',
           price: sellPrice,           // USD
           size: this._btcHoldings,    // BTC
@@ -280,10 +289,10 @@ class TradeBot {
     }
     
     cancel() {
-        // a trade did not occur, lets cancel this order
+        // a trade did not occur within TRADE_TIMEOUT, lets cancel this order
         
-        // TODO: make call to cancel order.
-        this._operationPending = false;
+        // TODO: for now we just let it stay out there till it fills, but eventually we'll make a call to cancel order and retry???
+        //this._operationPending = false;
     }
     
     emergencySell(currentPrice, reason) {

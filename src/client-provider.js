@@ -28,7 +28,7 @@ class ClientProvider  {
         // use the Mock Clients
         else {
             this.restClient = new MockRestClient();
-            this.websocketClient = new MockWebsocketClient(start, end);
+            this.websocketClient = new MockWebsocketClient(this.restClient, start, end);
         }
     }
 
