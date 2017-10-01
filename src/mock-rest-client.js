@@ -15,6 +15,9 @@ class MockRestClient extends EventEmitter {
 
     post(endpoint, args) {
         if (endpoint[0] === 'orders') {
+          console.log(args);
+
+
             const price = args.price;
             const size = args.size;
 

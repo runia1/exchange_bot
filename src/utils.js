@@ -28,17 +28,24 @@ const getDB = () => {
 const logMessage = (log_level, topic, msg) => {
   msg = `${new Date()} ${log_level} => topic: ${topic} msg: ${msg}`;
 
-  // log it
-  console.log(msg);
-
   switch(log_level) {
       case 'CRIT':
       case 'ERROR':
       case 'EMERG':
+          // log it with backtrace
+          console.error(msg);
           // email it
-          sendEmail(topic, msg);
+          //sendEmail(topic, msg);
+          break;
+      case 'INFO':
+          // log it
+          console.log(msg);
+          // email it
+          //sendEmail(topic, msg);
           break;
       default:
+        // log it
+        console.log(msg);
         // do nothing, you can use `tail:<app name>` to see all other logs
   }
 };

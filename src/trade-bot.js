@@ -56,6 +56,7 @@ class TradeBot {
 
         // must bind this otherwise it runs in the context of MockWebsocketClient
         this.matchHandler = this.matchHandler.bind(this);
+        this.closeHandler = this.closeHandler.bind(this);
     }
 
     /**
@@ -70,8 +71,8 @@ class TradeBot {
                 throw new Error('Cannot proceed, your account status is not active.');
             }
 
-            this._btcHoldings = data.accounts.BTC.balance;
-            this._usdHoldings = data.accounts.USD.balance;
+            this._btcHoldings = parseFloat(data.accounts.BTC.balance);
+            this._usdHoldings = parseFloat(data.accounts.USD.balance);
 
             if (this._usdHoldings > this._btcHoldings) {
                 this._side = USD;
@@ -80,10 +81,7 @@ class TradeBot {
                 this._side = BITCOIN;
             }
 
-            logMessage('DEBUG', 'Position Info', 'You have the following position:');
-            logMessage('DEBUG', 'Position Info', `BTC: ${this._btcHoldings}`);
-            logMessage('DEBUG', 'Position Info', `USD: ${this._usdHoldings}`);
-            logMessage('DEBUG', 'Position Info', `Side: ${this._side ? 'BTC' : 'USD'}`);
+            logMessage('INFO', 'Position Info', `You have the following position:\nBTC: ${this._btcHoldings}\nUSD: ${this._usdHoldings}\nSide: ${this._side ? 'BTC' : 'USD'}`);
 
             this._operationPending = false;
 
@@ -129,36 +127,40 @@ class TradeBot {
         });
 
         // if it closes reconnect
-        this._websocketClient.on('close', (data) => {
-            logMessage('ERROR', 'Websocket Error', `websocket closed unexpectedly with data: ${data}. Attempting to re-connect.`);
-
-            // try to re-connect the first time...
-            this._websocketClient.connect();
-
-            let count = 1;
-            // attempt to re-connect every 30 seconds.
-            const interval = setInterval(() => {
-                if (!this._websocketClient.socket) {
-                    count++;
-
-                    // send me a email if it keeps failing every 30/2 = 15 minutes
-                    if (count % 30 === 0) {
-                        let time_since = 30 * count;
-                        logMessage('CRIT', 'Websocket Error', `Attempting to re-connect for the ${count} time. It has been ${time_since} seconds since we lost connection.`);
-                    }
-                    this._websocketClient.connect();
-                }
-                else {
-                    clearInterval(interval);
-                }
-            }, 30000);
-        });
+        this._websocketClient.on('close', this.closeHandler);
     }
     
     stop() {
         this._websocketClient.removeListener('message', this.matchHandler);
+
+        this._websocketClient.removeListener('close', this.closeHandler);
         
         this._emaCalculator = null;
+    }
+
+    closeHandler(data) {
+      logMessage('ERROR', 'Websocket Error', `websocket closed unexpectedly with data: ${data}. Attempting to re-connect.`);
+
+      // try to re-connect the first time...
+      this._websocketClient.connect();
+
+      let count = 1;
+      // attempt to re-connect every 30 seconds.
+      const interval = setInterval(() => {
+        if (!this._websocketClient.socket) {
+          count++;
+
+          // send me a email if it keeps failing every 30/2 = 15 minutes
+          if (count % 30 === 0) {
+            let time_since = 30 * count;
+            logMessage('CRIT', 'Websocket Error', `Attempting to re-connect for the ${count} time. It has been ${time_since} seconds since we lost connection.`);
+          }
+          this._websocketClient.connect();
+        }
+        else {
+          clearInterval(interval);
+        }
+      }, 30000);
     }
     
     matchHandler(data) {
@@ -184,6 +186,8 @@ class TradeBot {
             }
 
             this._lastSequence = data.sequence;
+
+            data.price = parseFloat(data.price);
 
             // parse the time into an int here and feed it into the ema calculator
             const dateTimestamp = Date.parse(data.time);
@@ -259,20 +263,23 @@ class TradeBot {
         this._operationPending = true;
         
         const buyPrice = price - 0.01;
+        const size = this._usdHoldings / buyPrice;
+
         this._restClient.post(['orders'], {
           side: 'buy',
           type: 'limit',
           price: buyPrice,                        // USD
-          size: this._usdHoldings / buyPrice,     // BTC
+          size: size,     // BTC
           product_id: PRODUCT_ID,
         }).then((result) => {
             this._tradeTimer = setTimeout(() => {
                 this.cancel();
             }, TRADE_TIMEOUT);
-            logMessage('DEBUG', 'Trade Logic', `Executing a 'buy' limit order at: ${buyPrice} because of slope: ${slope}, response: ${result}`);
         }).catch((err) => {
             logMessage('CRIT', 'Trade Logic', `Failed to execute a 'buy' limit trade at: ${buyPrice} which was triggered bc of slope: ${slope}, err: ${err}`);
         });
+
+        logMessage('INFO', 'Trade Logic', `Executing a 'buy' limit order at: ${buyPrice}, amount: ${size} because of slope: ${slope}`);
     }
     
     sell(price, slope) {
@@ -289,10 +296,11 @@ class TradeBot {
             this._tradeTimer = setTimeout(() => {
                 this.cancel();
             }, TRADE_TIMEOUT);
-            logMessage('DEBUG', 'Trade Logic', `Executing a 'buy' limit order at: ${sellPrice} because of slope: ${slope}, response: ${result}`);
         }).catch((err) => {
             logMessage('CRIT', 'Trade Logic', `Failed to execute a 'buy' limit trade at: ${sellPrice} which was triggered bc of slope: ${slope}, err: ${err}`);
         });
+
+        logMessage('INFO', 'Trade Logic', `Executing a 'sell' limit order at: ${sellPrice}, amount: ${this._btcHoldings} because of slope: ${slope}`);
     }
     
     cancel() {

@@ -21,8 +21,7 @@ class MockWebsocketClient extends EventEmitter {
           this.fetchPoints(start, end).then((done) => {
             logMessage('DEBUG', 'MockWebsocketClient', `Done fetching points: ${done}`);
           }).catch((err) => {
-            console.error(err);
-            //logMessage('CRIT', 'MockWebsocketClient', `Problem fetching points: ${err}`);
+            logMessage('CRIT', 'MockWebsocketClient', `Problem fetching points: ${err}`);
           });
         }, 500);
 
@@ -51,6 +50,8 @@ class MockWebsocketClient extends EventEmitter {
           .toArray();
 
         for (let point of points) {
+          lastId = point._id;
+
           point.type = "match";
           this.emit('message', point);
         }
