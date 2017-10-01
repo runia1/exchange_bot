@@ -1,13 +1,20 @@
 'use strict';
 
-import "babel-polyfill";
+//import "babel-polyfill";
 
-import { ClientProvider, PROD, TEST } from './client-provider';
-import { TradeBot } from './trade-bot';
-import { logMessage } from './utils';
+//import { ClientProvider, PROD, TEST } from './client-provider';
+//import { TradeBot } from './trade-bot';
+//import { logMessage } from './utils';
 
-import express from 'express';
-import cors from 'cors';
+//import express from 'express';
+//import cors from 'cors';
+
+const { ClientProvider, PROD, TEST } = require('./client-provider');
+const { TradeBot } = require('./trade-bot');
+const { logMessage } = require('./utils');
+
+const express = require('express');
+const cors = require('cors');
 
 const MINUTES = 60*1000;
 

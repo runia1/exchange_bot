@@ -1,7 +1,12 @@
+'use strict';
 
-import { AuthenticatedClient, WebsocketClient } from 'gdax';
-import { MockRestClient } from "./mock-rest-client";
-import { MockWebsocketClient } from "./mock-websocket-client";
+//import { AuthenticatedClient, WebsocketClient } from 'gdax';
+//import { MockRestClient } from "./mock-rest-client";
+//import { MockWebsocketClient } from "./mock-websocket-client";
+
+const { AuthenticatedClient, WebsocketClient } = require('gdax');
+const { MockRestClient } = require('./mock-rest-client');
+const { MockWebsocketClient } = require('./mock-websocket-client');
 
 const PROD = 'prod';
 const TEST = 'test';
@@ -42,7 +47,7 @@ class ClientProvider  {
 }
 
 
-export {
+module.exports = {
     ClientProvider,
     PROD,
     TEST

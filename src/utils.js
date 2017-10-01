@@ -1,7 +1,10 @@
 'use strict';
 
-import { MongoClient, ObjectId } from 'mongodb';
-import nodemailer from 'nodemailer';
+//import { MongoClient, ObjectId } from 'mongodb';
+//import nodemailer from 'nodemailer';
+
+const { MongoClient, ObjectId } = require('mongodb');
+const nodemailer = require('nodemailer');
 
 // just connect the first time and the other times respond with global_db
 let global_db = null;

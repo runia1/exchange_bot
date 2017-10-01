@@ -1,7 +1,10 @@
 'use strict';
 
-import { EventEmitter } from 'events';
-import { getDB, ObjectId, logMessage } from './utils';
+//import { EventEmitter } from 'events';
+//import { getDB, ObjectId, logMessage } from './utils';
+
+const { EventEmitter } = require('events');
+const { getDB, ObjectId, logMessage } = require('./utils');
 
 class MockWebsocketClient extends EventEmitter {
     
@@ -18,7 +21,8 @@ class MockWebsocketClient extends EventEmitter {
           this.fetchPoints(start, end).then((done) => {
             logMessage('DEBUG', 'MockWebsocketClient', `Done fetching points: ${done}`);
           }).catch((err) => {
-            logMessage('CRIT', 'MockWebsocketClient', `Problem fetching points: ${err}`);
+            console.error(err);
+            //logMessage('CRIT', 'MockWebsocketClient', `Problem fetching points: ${err}`);
           });
         }, 500);
 
@@ -57,6 +61,6 @@ class MockWebsocketClient extends EventEmitter {
     connect() {}
 }
 
-export {
+module.exports = {
     MockWebsocketClient
-}
+};

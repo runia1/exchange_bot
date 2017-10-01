@@ -1,6 +1,8 @@
 'use strict';
 
-import { EventEmitter } from 'events';
+//import { EventEmitter } from 'events';
+
+const { EventEmitter } = require('events');
 
 class MockRestClient extends EventEmitter {
 
@@ -108,6 +110,6 @@ const execute_trade = (action, price, time, slope) => {
 };
 */
 
-export {
+module.exports = {
     MockRestClient
-}
+};

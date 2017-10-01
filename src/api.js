@@ -1,9 +1,13 @@
 'use strict';
 
-import express from 'express';
-import cors from 'cors';
+//import express from 'express';
+//import cors from 'cors';
 
-import { getDB, logMessage } from './utils';
+//import { getDB, logMessage } from './utils';
+
+const express = require('express');
+const cors = require('cors');
+const { getDB, logMessage } = require('./utils');
 
 // set up a simple api for the monitor
 const app = express();

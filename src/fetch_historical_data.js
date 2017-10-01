@@ -1,7 +1,10 @@
 'use strict';
 
-import { getDB, logMessage } from './utils';
-import { PublicClient } from 'gdax';
+//import { getDB, logMessage } from './utils';
+//import { PublicClient } from 'gdax';
+
+const { getDB, logMessage } = require('./utils');
+const { PublicClient } = require('gdax');
 
 const PRODUCT_ID = 'BTC-USD';
 

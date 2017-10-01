@@ -1,8 +1,10 @@
 'use strict';
 
-import MovingAverage from 'moving-average';
+//import MovingAverage from 'moving-average';
+//import { getDB, logMessage } from './utils';
 
-import { getDB, logMessage } from './utils';
+const MovingAverage = require('moving-average');
+const { getDB, logMessage } = require('./utils');
 
 // sides
 const USD = false;
@@ -28,6 +30,8 @@ class TradeBot {
         this._dropThreshold = dropThreshold;
         
         this._store = store;
+
+        this._emaCalculator = null;
         
         this._restClient = restClient;
         this._websocketClient = websocketClient;
@@ -49,6 +53,9 @@ class TradeBot {
 
         // fetch initial position
         this.fetchPosition();
+
+        // must bind this otherwise it runs in the context of MockWebsocketClient
+        this.matchHandler = this.matchHandler.bind(this);
     }
 
     /**
@@ -329,8 +336,8 @@ class TradeBot {
     }
 }
 
-export {
+module.exports = {
     TradeBot
-}
+};
 
 
