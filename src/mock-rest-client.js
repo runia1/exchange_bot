@@ -10,7 +10,7 @@ class MockRestClient extends EventEmitter {
       super();
 
       this._btcHoldings = 0.00;
-      this._usdHoldings = 1500.00; // start with $1500
+      this._usdHoldings = 6000.00; // start with $1500
     }
 
     post(endpoint, args) {

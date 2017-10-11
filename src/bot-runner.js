@@ -19,9 +19,29 @@ const cors = require('cors');
 const MINUTES = 60*1000;
 
 // TODO: spawn a dozen tradeBots and see which one wins on a month's worth of data
-const EMA_LENGTH = 12 * MINUTES; // 12 minutes
-const BUY_THRESHOLD = 0.0000025;
-const SELL_THRESHOLD = -0.0000025;
+
+// 1792
+/*const EMA_LENGTH = 12 * MINUTES;
+const BUY_THRESHOLD = 0.0000021;
+const SELL_THRESHOLD = -0.0000021;*/
+
+// 1859
+/*const EMA_LENGTH = 8 * MINUTES;
+const BUY_THRESHOLD = 0.0000021;
+const SELL_THRESHOLD = -0.0000021;*/
+
+// 1926
+const EMA_LENGTH = 8 * MINUTES;
+const BUY_THRESHOLD = 0.000004;
+const SELL_THRESHOLD = -0.000004;
+
+/*
+const EMA_LENGTH = 3 * MINUTES;
+const BUY_THRESHOLD = 0.000004;
+const SELL_THRESHOLD = -0.000004;
+*/
+
+
 const DROP_THRESHOLD = 500.00; // if it drops this far from the all_time_high sell and send an email!
 const store = false;
 
