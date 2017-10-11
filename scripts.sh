@@ -4,7 +4,7 @@
 # no need to build #alias build:all='npm run build:all'
 
 # deploy
-alias deploy:bot='node src/bot-runner.js &> logs/bot.log &'
+alias deploy:bot='node src/prod-bot-runner.js &> logs/bot.log &'
 alias deploy:api='node src/api.js &> logs/api.log &'
 
 # kill

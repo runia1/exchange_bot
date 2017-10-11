@@ -20,7 +20,7 @@ const GDAX_FEE = 0.0025; // .25% on taker fills
 // ############### YOU MUST UPDATE THIS ANYTIME YOU MANUALLY TRANSFER FUNDS INTO / OUT OF GDAX!!!! #################
 const USD_TOTAL_INVESTMENT = 1500.00;
 
-const TRADE_TIMEOUT = 2000; // timout trade if a match doesn't occur within 2 seconds
+const TRADE_TIMEOUT = 5000; // timout trade if a match doesn't occur within 5 seconds
 
 class TradeBot {
     constructor(restClient, websocketClient, emaLength, buyThreshold, sellThreshold, dropThreshold, store = false) {
@@ -305,9 +305,14 @@ class TradeBot {
     
     cancel() {
         // a trade did not occur within TRADE_TIMEOUT, lets cancel this order
-        
-        // TODO: for now we just let it stay out there till it fills, but eventually we'll make a call to cancel order and retry???
-        //this._operationPending = false;
+        this._restClient.cancelOrders().then((result) => {
+
+            logMessage('INFO', 'Trade Logic', `We cancelled all orders bc an order didn't fill within ${TRADE_TIMEOUT} milliseconds. Result: ${result}`);
+            
+            this._operationPending = false;
+        }).catch((err) => {
+            
+        });
     }
     
     emergencySell(currentPrice, reason) {
