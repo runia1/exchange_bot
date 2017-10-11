@@ -306,12 +306,11 @@ class TradeBot {
     cancel() {
         // a trade did not occur within TRADE_TIMEOUT, lets cancel this order
         this._restClient.cancelOrders().then((result) => {
-
             logMessage('INFO', 'Trade Logic', `We cancelled all orders bc an order didn't fill within ${TRADE_TIMEOUT} milliseconds. Result: ${result}`);
             
             this._operationPending = false;
         }).catch((err) => {
-            
+            logMessage('CRIT', 'Trade Logic', `We could not cancel all orders bc: ${err}`);
         });
     }
     
