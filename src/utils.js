@@ -35,13 +35,13 @@ const logMessage = (log_level, topic, msg) => {
           // log it with backtrace
           console.error(msg);
           // email it
-          //sendEmail(topic, msg);
+          sendEmail(topic, msg);
           break;
       case 'INFO':
           // log it
           console.log(msg);
           // email it
-          //sendEmail(topic, msg);
+          sendEmail(topic, msg);
           break;
       default:
         // log it

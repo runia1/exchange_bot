@@ -18,8 +18,6 @@ const cors = require('cors');
 
 const MINUTES = 60*1000;
 
-// TODO: spawn a dozen tradeBots and see which one wins on a month's worth of data
-
 // 1792
 /*const EMA_LENGTH = 12 * MINUTES;
 const BUY_THRESHOLD = 0.0000021;

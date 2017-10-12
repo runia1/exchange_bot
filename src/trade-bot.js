@@ -87,11 +87,14 @@ class TradeBot {
 
             return getDB();
         }).then((db) => {
+            // TODO: make this respect 'store' flag
             // store the new position
-            return db.collection('positions').insertOne({
+            db.collection('positions').insertOne({
                 time: new Date(),
                 usd: this._usdHoldings,
                 btc: this._btcHoldings
+            }).then((res) => {
+                // do nothing
             });
         }).catch((err) => {
             logMessage('CRIT', 'Fetch Position', `Could not fetch position, err: ${err}`);
