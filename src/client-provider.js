@@ -28,7 +28,9 @@ class ClientProvider  {
 
             // create the GDAX Clients
             this.restClient = new AuthenticatedClient(gdax_api_keys.key, gdax_api_keys.secret, gdax_api_keys.passphrase, gdax_api_uri);
-            this.websocketClient = new WebsocketClient([this._productId], ['user', 'matches', 'heartbeat'], gdax_wss_uri, gdax_api_keys);
+            this.websocketClient = new WebsocketClient([this._productId], gdax_wss_uri, gdax_api_keys, {
+                channels: ['user', 'matches']
+            });
         }
         // use the Mock Clients
         else {

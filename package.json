@@ -8,7 +8,7 @@
     "cors": "^2.8.4",
     "events": "^1.1.1",
     "express": "^4.15.0",
-    "gdax": "373mich/gdax-node#1e6d54dece1ed7f20792385a950c5e2c43d5a8fd",
+    "gdax": "github:coinbase/gdax-node",
     "mongodb": "^2.2.31",
     "moving-average": "^0.1.1",
     "nodemailer": "^4.0.1",

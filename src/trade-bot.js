@@ -20,7 +20,7 @@ const GDAX_FEE = 0.0025; // .25% on taker fills
 // ############### YOU MUST UPDATE THIS ANYTIME YOU MANUALLY TRANSFER FUNDS INTO / OUT OF GDAX!!!! #################
 const USD_TOTAL_INVESTMENT = 1500.00;
 
-const TRADE_TIMEOUT = 5000; // timout trade if a match doesn't occur within 5 seconds
+const TRADE_TIMEOUT = 10000; // timeout trade if a match doesn't occur within 10 seconds
 
 class TradeBot {
     constructor(restClient, websocketClient, emaLength, buyThreshold, sellThreshold, dropThreshold, store = false) {
@@ -167,20 +167,19 @@ class TradeBot {
     }
     
     matchHandler(data) {
+        
+        // if we get this, it means that our 'user' channel is letting us know that an order is complete
+        if (data.type === 'done') {
+            // kill the trade timer
+            clearTimeout(this._tradeTimer);
+
+            // NOTE: we could make this faster by doing the math ourselves instead of calling their api, but this approach
+            // ensures that their platform is always the source of truth and not us so it seems ok to halt any trades until this is done.
+            this.fetchPosition();
+        }
+        
         // we only care about matches.. that is when currency actually changes hands.
-        if (data.type === 'match') {
-
-            // update holdings if it was a match and I am one of the parties..
-            // the data will have a special property 'user_id' if my account was one of the parties involved in the trade.
-            if ('user_id' in data) {
-                // kill the trade timer
-                clearInterval(this._tradeTimer);
-
-                // NOTE: we could make this faster by doing the math ourselves instead of calling their api, but this approach
-                // ensures that their platform is always the source of truth and not us so it seems ok to halt any trades until this is done.
-                this.fetchPosition();
-            }
-
+        else if (data.type === 'match') {
             // we have to make sure these matches are in correct sequence otherwise our ema will not calculate correctly.
             // if it is not in the correct sequence we simply throw it out.. yes our ema will be slightly off but that is ok.
             if (data.sequence < this._lastSequence) {
@@ -260,24 +259,38 @@ class TradeBot {
                 });
             }
         }
+        
+        // it was something else user related like 'received' or 'open'
+        else {
+            logMessage('DEBUG', 'Trade Logic', `Got a message that wasn't a match: ${JSON.stringify(data)}`)
+        }
     }
     
     buy(price, slope) {
         this._operationPending = true;
         
-        const buyPrice = price - 0.01;
-        const size = this._usdHoldings / buyPrice;
+        const buyPrice = (price - 0.01).toFixed(2);
+        const size = (this._usdHoldings / buyPrice).toFixed(8);
 
-        this._restClient.post(['orders'], {
-          side: 'buy',
+        this._restClient.buy({
           type: 'limit',
-          price: buyPrice,                        // USD
-          size: size,     // BTC
+          price: buyPrice,          // USD
+          size: size,               // BTC
           product_id: PRODUCT_ID,
+          post_only: true
         }).then((result) => {
-            this._tradeTimer = setTimeout(() => {
-                this.cancel();
-            }, TRADE_TIMEOUT);
+            // this means it didn't go through :(
+            if ('message' in result) {
+                logMessage('DEBUG', 'Trade Logic', `Failed to execute a buy, result: ${JSON.stringify(result)}`);
+                this._operationPending = false;
+            }
+            else {
+                logMessage('DEBUG', 'Trade Logic', `Executed a buy, result: ${JSON.stringify(result)}`);
+
+                this._tradeTimer = setTimeout(() => {
+                    this.cancel();
+                }, TRADE_TIMEOUT);
+            }
         }).catch((err) => {
             logMessage('CRIT', 'Trade Logic', `Failed to execute a 'buy' limit trade at: ${buyPrice} which was triggered bc of slope: ${slope}, err: ${err}`);
         });
@@ -288,17 +301,26 @@ class TradeBot {
     sell(price, slope) {
         this._operationPending = true;
 
-        const sellPrice = price + 0.01;
-        this._restClient.post(['orders'], {
-          side: 'sell',
+        const sellPrice = (price + 0.01).toFixed(2);
+        this._restClient.sell({
           type: 'limit',
           price: sellPrice,           // USD
           size: this._btcHoldings,    // BTC
           product_id: PRODUCT_ID,
+          post_only: true
         }).then((result) => {
-            this._tradeTimer = setTimeout(() => {
-                this.cancel();
-            }, TRADE_TIMEOUT);
+            // this means it didn't go through :(
+            if ('message' in result) {
+                logMessage('DEBUG', 'Trade Logic', `Failed to execute a sell, result: ${JSON.stringify(result)}`);
+                this._operationPending = false;
+            }
+            else {
+                logMessage('DEBUG', 'Trade Logic', `Executed a sell, result: ${JSON.stringify(result)}`);
+
+                this._tradeTimer = setTimeout(() => {
+                    this.cancel();
+                }, TRADE_TIMEOUT);
+            }
         }).catch((err) => {
             logMessage('CRIT', 'Trade Logic', `Failed to execute a 'buy' limit trade at: ${sellPrice} which was triggered bc of slope: ${slope}, err: ${err}`);
         });
