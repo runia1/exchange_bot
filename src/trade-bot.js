@@ -281,11 +281,11 @@ class TradeBot {
         }).then((result) => {
             // this means it didn't go through :(
             if ('message' in result) {
-                logMessage('DEBUG', 'Trade Logic', `Failed to execute a buy, result: ${JSON.stringify(result)}`);
+                logMessage('DEBUG', 'Trade Logic', `Failed to execute a 'buy', result: ${JSON.stringify(result)}`);
                 this._operationPending = false;
             }
             else {
-                logMessage('DEBUG', 'Trade Logic', `Executed a buy, result: ${JSON.stringify(result)}`);
+                logMessage('INFO', 'Trade Logic', `Executing a 'buy' limit order at: ${buyPrice}, amount: ${size} because of slope: ${slope}`);
 
                 this._tradeTimer = setTimeout(() => {
                     this.cancel();
@@ -294,8 +294,6 @@ class TradeBot {
         }).catch((err) => {
             logMessage('CRIT', 'Trade Logic', `Failed to execute a 'buy' limit trade at: ${buyPrice} which was triggered bc of slope: ${slope}, err: ${err}`);
         });
-
-        logMessage('INFO', 'Trade Logic', `Executing a 'buy' limit order at: ${buyPrice}, amount: ${size} because of slope: ${slope}`);
     }
     
     sell(price, slope) {
@@ -311,21 +309,19 @@ class TradeBot {
         }).then((result) => {
             // this means it didn't go through :(
             if ('message' in result) {
-                logMessage('DEBUG', 'Trade Logic', `Failed to execute a sell, result: ${JSON.stringify(result)}`);
+                logMessage('DEBUG', 'Trade Logic', `Failed to execute a 'sell', result: ${JSON.stringify(result)}`);
                 this._operationPending = false;
             }
             else {
-                logMessage('DEBUG', 'Trade Logic', `Executed a sell, result: ${JSON.stringify(result)}`);
+                logMessage('INFO', 'Trade Logic', `Executing a 'sell' limit order at: ${sellPrice}, amount: ${this._btcHoldings} because of slope: ${slope}`);
 
                 this._tradeTimer = setTimeout(() => {
                     this.cancel();
                 }, TRADE_TIMEOUT);
             }
         }).catch((err) => {
-            logMessage('CRIT', 'Trade Logic', `Failed to execute a 'buy' limit trade at: ${sellPrice} which was triggered bc of slope: ${slope}, err: ${err}`);
+            logMessage('CRIT', 'Trade Logic', `Failed to execute a 'sell' limit trade at: ${sellPrice} which was triggered bc of slope: ${slope}, err: ${err}`);
         });
-
-        logMessage('INFO', 'Trade Logic', `Executing a 'sell' limit order at: ${sellPrice}, amount: ${this._btcHoldings} because of slope: ${slope}`);
     }
     
     cancel() {
