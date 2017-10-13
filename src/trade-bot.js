@@ -256,16 +256,16 @@ class TradeBot {
     buy(price, slope) {
         this._operationPending = true;
         
-        const size = (this._usdHoldings / price).toFixed(8);
-
         this._restClient.buy({
           type: 'market',
-          funds: this._usdHoldings,
+          funds: this._usdHoldings.toFixed(2),
           product_id: PRODUCT_ID
         }).then((result) => {
-            console.dir(result);
+            if ('message' in result) {
+                return Promise.reject(result.message);
+            }
             
-            logMessage('INFO', 'Trade Logic', `Executing a 'buy' market order at: ${price}, size: ${size} because of slope: ${slope}`);
+            logMessage('INFO', 'Trade Logic', `Executing a 'buy' market order at: ${price}, size: ${(this._usdHoldings / price).toFixed(8)} because of slope: ${slope}`);
 
             this._tradeTimer = setTimeout(() => {
                 this.cancel();
@@ -281,10 +281,12 @@ class TradeBot {
         
         this._restClient.sell({
           type: 'market',
-          size: this._btcHoldings,    // BTC
+          size: this._btcHoldings.toFixed(8),    // BTC
           product_id: PRODUCT_ID
         }).then((result) => {
-            console.dir(result);
+            if ('message' in result) {
+                return Promise.reject(result.message);
+            }
             
             logMessage('INFO', 'Trade Logic', `Executing a 'sell' market order at: ${price}, size: ${this._btcHoldings} because of slope: ${slope}`);
 
