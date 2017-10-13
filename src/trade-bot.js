@@ -10,10 +10,6 @@ const { getDB, logMessage } = require('./utils');
 const USD = false;
 const BITCOIN = true;
 
-// actions
-const BUY = false;
-const SELL = true;
-
 const PRODUCT_ID = 'BTC-USD';
 const GDAX_FEE = 0.0025; // .25% on taker fills
 
@@ -50,6 +46,8 @@ class TradeBot {
         this._lastTime = null;
         
         this._tradeTimer = null;
+        
+        this._points = [];
 
         // fetch initial position
         this.fetchPosition();
@@ -245,17 +243,10 @@ class TradeBot {
 
             // if we want to store the points store them
             if (this._store) {
-                // put the new ema in the db
-                getDB().then((db) => {
-                    return db.collection('points').insertOne({
-                        time: new Date(dateTimestamp), // turn it into a Date object here
-                        price: data.price,
-                        ema: ema
-                    });
-                }).then((result) => {
-                    // TODO: make sure it was inserted correctly???
-                }).catch((err) => {
-                    logMessage('CRIT', 'Database failure', `Failed to get database connection, reason: ${err}`);
+                this.savePoint({
+                    time: new Date(dateTimestamp), 
+                    price: data.price, 
+                    ema
                 });
             }
         }
@@ -333,6 +324,21 @@ class TradeBot {
         }).catch((err) => {
             logMessage('CRIT', 'Trade Logic', `We could not cancel all orders bc: ${err}`);
         });
+    }
+
+    savePoint(point) {
+        this._points.push(point);
+        
+        if (this._points.length === 100) {
+            // put the new ema in the db
+            getDB().then((db) => {
+                return db.collection('points').insertMany(this._points);
+            }).then((result) => {
+                this._points = [];
+            }).catch((err) => {
+                logMessage('CRIT', 'Database failure', `Failed to save points, reason: ${err}`);
+            });
+        }
     }
     
     emergencySell(currentPrice, reason) {
