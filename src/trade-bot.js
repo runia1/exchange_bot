@@ -56,10 +56,7 @@ class TradeBot {
         this.matchHandler = this.matchHandler.bind(this);
         this.closeHandler = this.closeHandler.bind(this);
     }
-
-    /**
-     * get and store our current position
-     */
+    
     fetchPosition() {
         this._operationPending = true;
         this._restClient.request('get', [
@@ -264,24 +261,17 @@ class TradeBot {
         const size = (this._usdHoldings / buyPrice).toFixed(8);
 
         this._restClient.buy({
-          type: 'limit',
-          price: buyPrice,          // USD
+          type: 'market',
           size: size,               // BTC
-          product_id: PRODUCT_ID,
-          post_only: true
+          product_id: PRODUCT_ID
         }).then((result) => {
-            // this means it didn't go through :(
-            if ('message' in result) {
-                logMessage('DEBUG', 'Trade Logic', `Failed to execute a 'buy', result: ${JSON.stringify(result)}`);
-                this._operationPending = false;
-            }
-            else {
-                logMessage('INFO', 'Trade Logic', `Executing a 'buy' limit order at: ${buyPrice}, amount: ${size} because of slope: ${slope}`);
+            console.dir(result);
+            
+            logMessage('INFO', 'Trade Logic', `Executing a 'buy' limit order at: ${buyPrice}, amount: ${size} because of slope: ${slope}`);
 
-                this._tradeTimer = setTimeout(() => {
-                    this.cancel();
-                }, TRADE_TIMEOUT);
-            }
+            this._tradeTimer = setTimeout(() => {
+                this.cancel();
+            }, TRADE_TIMEOUT);
         }).catch((err) => {
             logMessage('CRIT', 'Trade Logic', `Failed to execute a 'buy' limit trade at: ${buyPrice} which was triggered bc of slope: ${slope}, err: ${err}`);
         });
@@ -292,24 +282,17 @@ class TradeBot {
 
         const sellPrice = (price + 0.01).toFixed(2);
         this._restClient.sell({
-          type: 'limit',
-          price: sellPrice,           // USD
+          type: 'market',
           size: this._btcHoldings,    // BTC
-          product_id: PRODUCT_ID,
-          post_only: true
+          product_id: PRODUCT_ID
         }).then((result) => {
-            // this means it didn't go through :(
-            if ('message' in result) {
-                logMessage('DEBUG', 'Trade Logic', `Failed to execute a 'sell', result: ${JSON.stringify(result)}`);
-                this._operationPending = false;
-            }
-            else {
-                logMessage('INFO', 'Trade Logic', `Executing a 'sell' limit order at: ${sellPrice}, amount: ${this._btcHoldings} because of slope: ${slope}`);
+            console.dir(result);
+            
+            logMessage('INFO', 'Trade Logic', `Executing a 'sell' limit order at: ${sellPrice}, amount: ${this._btcHoldings} because of slope: ${slope}`);
 
-                this._tradeTimer = setTimeout(() => {
-                    this.cancel();
-                }, TRADE_TIMEOUT);
-            }
+            this._tradeTimer = setTimeout(() => {
+                this.cancel();
+            }, TRADE_TIMEOUT);
         }).catch((err) => {
             logMessage('CRIT', 'Trade Logic', `Failed to execute a 'sell' limit trade at: ${sellPrice} which was triggered bc of slope: ${slope}, err: ${err}`);
         });
