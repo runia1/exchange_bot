@@ -243,8 +243,10 @@ class TradeBot {
         
         // it was something else user related like 'received' or 'open'
         else {
-            // if we get this, it means that our 'user' channel is letting us know that an order is complete
-            if (data.type === 'done') {
+            logMessage('DEBUG', 'Trade Logic', `Got a message that wasn't a match: ${JSON.stringify(data)}`);
+            
+            // if we get this, it means that our 'user' channel is letting us know that an order was filled
+            if (data.type === 'done' && data.reason === 'filled') {
                 // kill the trade timer
                 clearTimeout(this._tradeTimer);
 
@@ -252,8 +254,6 @@ class TradeBot {
                 // ensures that their platform is always the source of truth and not us so it seems ok to halt any trades until this is done.
                 this.fetchPosition();
             }
-            
-            logMessage('DEBUG', 'Trade Logic', `Got a message that wasn't a match: ${JSON.stringify(data)}`);
         }
     }
     
@@ -263,6 +263,8 @@ class TradeBot {
         const buyPrice = (price - 0.01).toFixed(2);
         const size = (this._usdHoldings / buyPrice).toFixed(8);
 
+        logMessage('INFO', 'Trade Logic', `Executing a 'buy' limit order at: ${buyPrice}, size: ${size} because of slope: ${slope}`);
+        
         this._restClient.buy({
           type: 'limit',
           price: buyPrice,          // USD
@@ -274,20 +276,20 @@ class TradeBot {
             if ('message' in result) {
                 return Promise.reject(result.message);
             }
-            
-            logMessage('INFO', 'Trade Logic', `Executing a 'buy' limit order at: ${buyPrice}, amount: ${size} because of slope: ${slope}`);
 
             this._tradeTimer = setTimeout(() => {
                 this.cancel();
             }, TRADE_TIMEOUT);
         }).catch((err) => {
             this._operationPending = false;
-            logMessage('CRIT', 'Trade Logic', `Failed to execute a 'buy' limit trade at: ${buyPrice} which was triggered bc of slope: ${slope}, err: ${err}`);
+            logMessage('CRIT', 'Trade Logic', `Failed to execute a 'buy' limit trade at: ${buyPrice}, size: ${size} which was triggered bc of slope: ${slope}, err: ${err}`);
         });
     }
     
     sell(price, slope) {
         this._operationPending = true;
+
+        logMessage('INFO', 'Trade Logic', `Executing a 'sell' limit order at: ${sellPrice}, size: ${this._btcHoldings} because of slope: ${slope}`);
 
         const sellPrice = (price + 0.01).toFixed(2);
         this._restClient.sell({
@@ -301,23 +303,20 @@ class TradeBot {
             if ('message' in result) {
                 return Promise.reject(result.message);
             }
-            
-            logMessage('INFO', 'Trade Logic', `Executing a 'sell' limit order at: ${sellPrice}, amount: ${this._btcHoldings} because of slope: ${slope}`);
 
             this._tradeTimer = setTimeout(() => {
                 this.cancel();
             }, TRADE_TIMEOUT);
         }).catch((err) => {
             this._operationPending = false;
-            logMessage('CRIT', 'Trade Logic', `Failed to execute a 'sell' limit trade at: ${sellPrice} which was triggered bc of slope: ${slope}, err: ${err}`);
+            logMessage('CRIT', 'Trade Logic', `Failed to execute a 'sell' limit trade at: ${sellPrice}, size: ${this._btcHoldings} which was triggered bc of slope: ${slope}, err: ${err}`);
         });
     }
     
     cancel() {
-        // a trade did not occur within TRADE_TIMEOUT, lets cancel this order
+        logMessage('INFO', 'Trade Logic', `Cancelling all orders bc an order didn't fill within ${TRADE_TIMEOUT} milliseconds. Result: ${result}`);
+        
         this._restClient.cancelOrders().then((result) => {
-            logMessage('INFO', 'Trade Logic', `We cancelled all orders bc an order didn't fill within ${TRADE_TIMEOUT} milliseconds. Result: ${result}`);
-            
             this._operationPending = false;
         }).catch((err) => {
             logMessage('CRIT', 'Trade Logic', `We could not cancel all orders bc: ${err}`);
