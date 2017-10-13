@@ -161,7 +161,7 @@ class TradeBot {
       }, 30000);
     }
     
-    matchHandler(data) {\
+    matchHandler(data) {
         // we only care about matches.. that is when currency actually changes hands.
         if (data.type === 'match') {
             // we have to make sure these matches are in correct sequence otherwise our ema will not calculate correctly.
@@ -248,8 +248,8 @@ class TradeBot {
                 // ensures that their platform is always the source of truth and not us so it seems ok to halt any trades until this is done.
                 this.fetchPosition();
             }
-        
-            logMessage('DEBUG', 'Trade Logic', `Got a message that wasn't a match: ${JSON.stringify(data)}`)
+            
+            logMessage('DEBUG', 'Trade Logic', `Got a message that wasn't a match: ${JSON.stringify(data)}`);
         }
     }
     
@@ -265,13 +265,14 @@ class TradeBot {
         }).then((result) => {
             console.dir(result);
             
-            logMessage('INFO', 'Trade Logic', `Executing a 'buy' limit order at: ${price}, size: ${size} because of slope: ${slope}`);
+            logMessage('INFO', 'Trade Logic', `Executing a 'buy' market order at: ${price}, size: ${size} because of slope: ${slope}`);
 
             this._tradeTimer = setTimeout(() => {
                 this.cancel();
             }, TRADE_TIMEOUT);
         }).catch((err) => {
-            logMessage('CRIT', 'Trade Logic', `Failed to execute a 'buy' limit trade at: ${price} which was triggered bc of slope: ${slope}, err: ${err}`);
+            logMessage('CRIT', 'Trade Logic', `Failed to execute a 'buy' market trade at: ${price} which was triggered bc of slope: ${slope}, err: ${err}`);
+            this._operationPending = false;
         });
     }
     
@@ -285,13 +286,14 @@ class TradeBot {
         }).then((result) => {
             console.dir(result);
             
-            logMessage('INFO', 'Trade Logic', `Executing a 'sell' limit order at: ${price}, size: ${this._btcHoldings} because of slope: ${slope}`);
+            logMessage('INFO', 'Trade Logic', `Executing a 'sell' market order at: ${price}, size: ${this._btcHoldings} because of slope: ${slope}`);
 
             this._tradeTimer = setTimeout(() => {
                 this.cancel();
             }, TRADE_TIMEOUT);
         }).catch((err) => {
-            logMessage('CRIT', 'Trade Logic', `Failed to execute a 'sell' limit trade at: ${price} which was triggered bc of slope: ${slope}, err: ${err}`);
+            logMessage('CRIT', 'Trade Logic', `Failed to execute a 'sell' market trade at: ${price} which was triggered bc of slope: ${slope}, err: ${err}`);
+            this._operationPending = false;
         });
     }
     
