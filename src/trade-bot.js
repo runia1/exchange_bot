@@ -166,19 +166,8 @@ class TradeBot {
     }
     
     matchHandler(data) {
-        
-        // if we get this, it means that our 'user' channel is letting us know that an order is complete
-        if (data.type === 'done') {
-            // kill the trade timer
-            clearTimeout(this._tradeTimer);
-
-            // NOTE: we could make this faster by doing the math ourselves instead of calling their api, but this approach
-            // ensures that their platform is always the source of truth and not us so it seems ok to halt any trades until this is done.
-            this.fetchPosition();
-        }
-        
         // we only care about matches.. that is when currency actually changes hands.
-        else if (data.type === 'match') {
+        if (data.type === 'match') {
             // we have to make sure these matches are in correct sequence otherwise our ema will not calculate correctly.
             // if it is not in the correct sequence we simply throw it out.. yes our ema will be slightly off but that is ok.
             if (data.sequence < this._lastSequence) {
@@ -254,7 +243,17 @@ class TradeBot {
         
         // it was something else user related like 'received' or 'open'
         else {
-            logMessage('DEBUG', 'Trade Logic', `Got a message that wasn't a match: ${JSON.stringify(data)}`)
+            // if we get this, it means that our 'user' channel is letting us know that an order is complete
+            if (data.type === 'done') {
+                // kill the trade timer
+                clearTimeout(this._tradeTimer);
+
+                // NOTE: we could make this faster by doing the math ourselves instead of calling their api, but this approach
+                // ensures that their platform is always the source of truth and not us so it seems ok to halt any trades until this is done.
+                this.fetchPosition();
+            }
+            
+            logMessage('DEBUG', 'Trade Logic', `Got a message that wasn't a match: ${JSON.stringify(data)}`);
         }
     }
     
@@ -284,6 +283,7 @@ class TradeBot {
                 }, TRADE_TIMEOUT);
             }
         }).catch((err) => {
+            this._operationPending = false;
             logMessage('CRIT', 'Trade Logic', `Failed to execute a 'buy' limit trade at: ${buyPrice} which was triggered bc of slope: ${slope}, err: ${err}`);
         });
     }
@@ -312,6 +312,7 @@ class TradeBot {
                 }, TRADE_TIMEOUT);
             }
         }).catch((err) => {
+            this._operationPending = false;
             logMessage('CRIT', 'Trade Logic', `Failed to execute a 'sell' limit trade at: ${sellPrice} which was triggered bc of slope: ${slope}, err: ${err}`);
         });
     }
