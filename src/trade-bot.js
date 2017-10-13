@@ -1,5 +1,6 @@
 'use strict';
 
+
 //import MovingAverage from 'moving-average';
 //import { getDB, logMessage } from './utils';
 
