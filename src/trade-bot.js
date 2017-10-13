@@ -17,7 +17,7 @@ const GDAX_FEE = 0.0025; // .25% on taker fills
 // ############### YOU MUST UPDATE THIS ANYTIME YOU MANUALLY TRANSFER FUNDS INTO / OUT OF GDAX!!!! #################
 const USD_TOTAL_INVESTMENT = 1500.00;
 
-const TRADE_TIMEOUT = 10000; // timeout trade if a match doesn't occur within 10 seconds
+const TRADE_TIMEOUT = 15000; // timeout trade if a match doesn't occur within 15 seconds
 
 class TradeBot {
     constructor(restClient, websocketClient, emaLength, buyThreshold, sellThreshold, dropThreshold, store = false) {
@@ -38,6 +38,7 @@ class TradeBot {
         this._side = BITCOIN;
 
         this._operationPending = false;
+        this._operationRemainingSize = 0;
 
         // TODO: we could make this do an actual lookup someday.. maybe from our database
         this._allTimeHigh = 4980.00;
@@ -243,13 +244,21 @@ class TradeBot {
             logMessage('DEBUG', 'Trade Logic', `Got a message that wasn't a match: ${JSON.stringify(data)}`);
 
             // if we get this, it means that our 'user' channel is letting us know that an order was filled
-            if (data.type === 'done' && data.reason === 'filled') {
-                // kill the trade timer
-                clearTimeout(this._tradeTimer);
+            if (data.type === 'done') {
+                if (data.reason === 'filled') {
+                    // kill the trade timer
+                    clearTimeout(this._tradeTimer);
 
-                // NOTE: we could make this faster by doing the math ourselves instead of calling their api, but this approach
-                // ensures that their platform is always the source of truth and not us so it seems ok to halt any trades until this is done.
-                this.fetchPosition();
+                    // NOTE: we could make this faster by doing the math ourselves instead of calling their api, but this approach
+                    // ensures that their platform is always the source of truth and not us so it seems ok to halt any trades until this is done.
+                    this.fetchPosition();
+                }
+                else if (data.reason === 'cancelled') {
+                    // double check that none of it was sold, if so we need to re-fetch our position
+                    if (this._operationRemainingSize !== parseFloat(data.remaining_size)) {
+                        this.fetchPosition();
+                    }
+                }
             }
         }
     }
@@ -259,6 +268,8 @@ class TradeBot {
 
         const buyPrice = (price - 0.01).toFixed(2);
         const size = (this._usdHoldings / buyPrice).toFixed(8);
+        
+        this._operationRemainingSize = size;
 
         logMessage('INFO', 'Trade Logic', `Executing a 'buy' limit order at: ${buyPrice}, size: ${size} because of slope: ${slope}`);
 
@@ -279,7 +290,7 @@ class TradeBot {
             }, TRADE_TIMEOUT);
         }).catch((err) => {
             this._operationPending = false;
-            logMessage('CRIT', 'Trade Logic', `Failed to execute a 'buy' limit trade at: ${buyPrice}, size: ${size} which was triggered bc of slope: ${slope}, err: ${err}`);
+            logMessage('ERROR', 'Trade Logic', `Failed to execute a 'buy' limit trade at: ${buyPrice}, size: ${size} which was triggered bc of slope: ${slope}, err: ${err}`);
         });
     }
 
@@ -289,6 +300,8 @@ class TradeBot {
         const sellPrice = (price + 0.01).toFixed(2);
         
         logMessage('INFO', 'Trade Logic', `Executing a 'sell' limit order at: ${sellPrice}, size: ${this._btcHoldings} because of slope: ${slope}`);
+        
+        this._operationRemainingSize = this._btcHoldings;
         
         this._restClient.sell({
             type: 'limit',
@@ -307,7 +320,7 @@ class TradeBot {
             }, TRADE_TIMEOUT);
         }).catch((err) => {
             this._operationPending = false;
-            logMessage('CRIT', 'Trade Logic', `Failed to execute a 'sell' limit trade at: ${sellPrice}, size: ${this._btcHoldings} which was triggered bc of slope: ${slope}, err: ${err}`);
+            logMessage('ERROR', 'Trade Logic', `Failed to execute a 'sell' limit trade at: ${sellPrice}, size: ${this._btcHoldings} which was triggered bc of slope: ${slope}, err: ${err}`);
         });
     }
 
