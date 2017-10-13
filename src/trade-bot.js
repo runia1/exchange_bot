@@ -25,29 +25,29 @@ class TradeBot {
         this._buyThreshold = buyThreshold;
         this._sellThreshold = sellThreshold;
         this._dropThreshold = dropThreshold;
-        
+
         this._store = store;
 
         this._emaCalculator = null;
-        
+
         this._restClient = restClient;
         this._websocketClient = websocketClient;
-        
+
         this._btcHoldings = 0.00;
         this._usdHoldings = 0.00;
         this._side = BITCOIN;
-        
+
         this._operationPending = false;
-        
+
         // TODO: we could make this do an actual lookup someday.. maybe from our database
         this._allTimeHigh = 4980.00;
-        
+
         this._lastSequence = 0;
         this._lastEMA = 0;
         this._lastTime = null;
-        
+
         this._tradeTimer = null;
-        
+
         this._points = [];
 
         // fetch initial position
@@ -61,7 +61,7 @@ class TradeBot {
     fetchPosition() {
         this._operationPending = true;
         this._restClient.request('get', [
-          'position'
+            'position'
         ]).then((data) => {
             if (data.status !== 'active') {
                 throw new Error('Cannot proceed, your account status is not active.');
@@ -98,11 +98,11 @@ class TradeBot {
             this.fetchPosition();
         });
     }
-    
+
     run() {
         // start the ema calculator
         this._emaCalculator = MovingAverage(this._emaLength);
-        
+
         // every time we start this thing up we need to get some initial values before we let it loose. 
         // To do this we temporarily hook up a small event handler in charge of preloading those values. 
         // We then remove it and hook up our more permanent event handler which has trade logic.
@@ -112,9 +112,9 @@ class TradeBot {
                 this._lastTime = Date.parse(data.time);
                 this._emaCalculator.push(this._lastTime, data.price);
                 this._lastEMA = this._emaCalculator.movingAverage();
-                
+
                 this._websocketClient.removeListener('message', preloadHandler);
-                
+
                 this._websocketClient.addListener('message', this.matchHandler);
             }
         };
@@ -128,40 +128,40 @@ class TradeBot {
         // if it closes reconnect
         this._websocketClient.on('close', this.closeHandler);
     }
-    
+
     stop() {
         this._websocketClient.removeListener('message', this.matchHandler);
 
         this._websocketClient.removeListener('close', this.closeHandler);
-        
+
         this._emaCalculator = null;
     }
 
     closeHandler(data) {
-      logMessage('ERROR', 'Websocket Error', `websocket closed unexpectedly with data: ${data}. Attempting to re-connect.`);
+        logMessage('ERROR', 'Websocket Error', `websocket closed unexpectedly with data: ${data}. Attempting to re-connect.`);
 
-      // try to re-connect the first time...
-      this._websocketClient.connect();
+        // try to re-connect the first time...
+        this._websocketClient.connect();
 
-      let count = 1;
-      // attempt to re-connect every 30 seconds.
-      const interval = setInterval(() => {
-        if (!this._websocketClient.socket) {
-          count++;
+        let count = 1;
+        // attempt to re-connect every 30 seconds.
+        const interval = setInterval(() => {
+            if (!this._websocketClient.socket) {
+                count++;
 
-          // send me a email if it keeps failing every 30/2 = 15 minutes
-          if (count % 30 === 0) {
-            let time_since = 30 * count;
-            logMessage('CRIT', 'Websocket Error', `Attempting to re-connect for the ${count} time. It has been ${time_since} seconds since we lost connection.`);
-          }
-          this._websocketClient.connect();
-        }
-        else {
-          clearInterval(interval);
-        }
-      }, 30000);
+                // send me a email if it keeps failing every 30/2 = 15 minutes
+                if (count % 30 === 0) {
+                    let time_since = 30 * count;
+                    logMessage('CRIT', 'Websocket Error', `Attempting to re-connect for the ${count} time. It has been ${time_since} seconds since we lost connection.`);
+                }
+                this._websocketClient.connect();
+            }
+            else {
+                clearInterval(interval);
+            }
+        }, 30000);
     }
-    
+
     matchHandler(data) {
         // we only care about matches.. that is when currency actually changes hands.
         if (data.type === 'match') {
@@ -231,17 +231,17 @@ class TradeBot {
             // if we want to store the points store them
             if (this._store) {
                 this.savePoint({
-                    time: new Date(dateTimestamp), 
-                    price: data.price, 
+                    time: new Date(dateTimestamp),
+                    price: data.price,
                     ema
                 });
             }
         }
-        
+
         // it was something else user related like 'received' or 'open'
         else {
             logMessage('DEBUG', 'Trade Logic', `Got a message that wasn't a match: ${JSON.stringify(data)}`);
-            
+
             // if we get this, it means that our 'user' channel is letting us know that an order was filled
             if (data.type === 'done' && data.reason === 'filled') {
                 // kill the trade timer
@@ -253,85 +253,67 @@ class TradeBot {
             }
         }
     }
-    
+
     buy(price, slope) {
         this._operationPending = true;
-        
-<<<<<<< HEAD
-=======
+
         const buyPrice = (price - 0.01).toFixed(2);
         const size = (this._usdHoldings / buyPrice).toFixed(8);
 
         logMessage('INFO', 'Trade Logic', `Executing a 'buy' limit order at: ${buyPrice}, size: ${size} because of slope: ${slope}`);
-        
->>>>>>> limits
+
         this._restClient.buy({
-          type: 'market',
-          funds: this._usdHoldings.toFixed(2),
-          product_id: PRODUCT_ID
+            type: 'limit',
+            price: buyPrice,          // USD
+            size: size,               // BTC
+            product_id: PRODUCT_ID,
+            post_only: true
         }).then((result) => {
+            // this means it didn't go through :(
             if ('message' in result) {
                 return Promise.reject(result.message);
             }
-<<<<<<< HEAD
-            
-            logMessage('INFO', 'Trade Logic', `Executing a 'buy' market order at: ${price}, size: ${(this._usdHoldings / price).toFixed(8)} because of slope: ${slope}`);
-=======
->>>>>>> limits
 
             this._tradeTimer = setTimeout(() => {
                 this.cancel();
             }, TRADE_TIMEOUT);
         }).catch((err) => {
-            logMessage('CRIT', 'Trade Logic', `Failed to execute a 'buy' market trade at: ${price} which was triggered bc of slope: ${slope}, err: ${err}`);
             this._operationPending = false;
-<<<<<<< HEAD
-=======
             logMessage('CRIT', 'Trade Logic', `Failed to execute a 'buy' limit trade at: ${buyPrice}, size: ${size} which was triggered bc of slope: ${slope}, err: ${err}`);
->>>>>>> limits
         });
     }
-    
+
     sell(price, slope) {
         this._operationPending = true;
-<<<<<<< HEAD
-        
-=======
-
-        logMessage('INFO', 'Trade Logic', `Executing a 'sell' limit order at: ${sellPrice}, size: ${this._btcHoldings} because of slope: ${slope}`);
 
         const sellPrice = (price + 0.01).toFixed(2);
->>>>>>> limits
+        
+        logMessage('INFO', 'Trade Logic', `Executing a 'sell' limit order at: ${sellPrice}, size: ${this._btcHoldings} because of slope: ${slope}`);
+        
         this._restClient.sell({
-          type: 'market',
-          size: this._btcHoldings.toFixed(8),    // BTC
-          product_id: PRODUCT_ID
+            type: 'limit',
+            price: sellPrice,           // USD
+            size: this._btcHoldings,    // BTC
+            product_id: PRODUCT_ID,
+            post_only: true
         }).then((result) => {
+            // this means it didn't go through :(
             if ('message' in result) {
                 return Promise.reject(result.message);
             }
-<<<<<<< HEAD
-            
-            logMessage('INFO', 'Trade Logic', `Executing a 'sell' market order at: ${price}, size: ${this._btcHoldings} because of slope: ${slope}`);
-=======
->>>>>>> limits
 
             this._tradeTimer = setTimeout(() => {
                 this.cancel();
             }, TRADE_TIMEOUT);
         }).catch((err) => {
-            logMessage('CRIT', 'Trade Logic', `Failed to execute a 'sell' market trade at: ${price} which was triggered bc of slope: ${slope}, err: ${err}`);
             this._operationPending = false;
-<<<<<<< HEAD
-=======
             logMessage('CRIT', 'Trade Logic', `Failed to execute a 'sell' limit trade at: ${sellPrice}, size: ${this._btcHoldings} which was triggered bc of slope: ${slope}, err: ${err}`);
->>>>>>> limits
         });
     }
-    
+
     cancel() {
-        logMessage('INFO', 'Trade Logic', `Cancelling all orders bc an order didn't fill within ${TRADE_TIMEOUT} milliseconds. Result: ${result}`);
-        
+        logMessage('INFO', 'Trade Logic', `Cancelling all orders bc an order didn't fill within ${TRADE_TIMEOUT} milliseconds`);
+
         this._restClient.cancelOrders().then((result) => {
             this._operationPending = false;
         }).catch((err) => {
@@ -341,7 +323,7 @@ class TradeBot {
 
     savePoint(point) {
         this._points.push(point);
-        
+
         if (this._points.length === 100) {
             // put the new ema in the db
             getDB().then((db) => {
@@ -353,7 +335,7 @@ class TradeBot {
             });
         }
     }
-    
+
     emergencySell(currentPrice, reason) {
         this._operationPending = true;
 
@@ -375,11 +357,11 @@ class TradeBot {
             logMessage('CRIT', 'emergency sell failed', `tried to do an emergency sell at: ${currentPrice}, but failed due to: ${err}. Original reason for trying to sell: ${reason}`);
         });
     }
-    
+
     getAllTimeHigh() {
         return this._allTimeHigh;
     }
-    
+
     getPosition() {
         return {
             "BTC": this._btcHoldings,
@@ -391,5 +373,3 @@ class TradeBot {
 module.exports = {
     TradeBot
 };
-
-
