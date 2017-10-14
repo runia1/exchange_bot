@@ -9,6 +9,8 @@
 //import express from 'express';
 //import cors from 'cors';
 
+process.env.TZ = 'America/Boise';
+
 const { ClientProvider, PROD, TEST } = require('./client-provider');
 const { TradeBot } = require('./trade-bot');
 const { logMessage } = require('./utils');

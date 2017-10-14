@@ -292,6 +292,12 @@ class TradeBot {
         }).catch((err) => {
             this._operationPending = false;
             logMessage('ERROR', 'Trade Logic', `Failed to execute a 'buy' limit trade at: ${buyPrice}, size: ${size} which was triggered bc of slope: ${slope}, err: ${err}`);
+
+            // this happens sometimes when their servers are too slow :(, just refresh our position
+            // TODO: maybe change this to calculate it ourselves...
+            if (err === 'Insufficient funds') {
+                this.fetchPosition();
+            }
         });
     }
 
@@ -322,6 +328,11 @@ class TradeBot {
         }).catch((err) => {
             this._operationPending = false;
             logMessage('ERROR', 'Trade Logic', `Failed to execute a 'sell' limit trade at: ${sellPrice}, size: ${this._btcHoldings} which was triggered bc of slope: ${slope}, err: ${err}`);
+
+            // this happens sometimes when their servers are too slow :(, just refresh our position
+            if (err === 'Insufficient funds') {
+                this.fetchPosition();
+            }
         });
     }
 

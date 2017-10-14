@@ -26,7 +26,7 @@ const getDB = () => {
  * @param msg
  */
 const logMessage = (log_level, topic, msg) => {
-  msg = `${new Date()} ${log_level} => topic: ${topic} msg: ${msg}`;
+  msg = `${new Date().toLocaleString()} ${log_level} => topic: ${topic} msg: ${msg}`;
 
   switch(log_level) {
       case 'CRIT':
