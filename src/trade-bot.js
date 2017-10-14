@@ -5,7 +5,7 @@
 //import { getDB, logMessage } from './utils';
 
 const MovingAverage = require('moving-average');
-const { getDB, logMessage } = require('./utils');
+const { getDB, logMessage, toDigit } = require('./utils');
 
 // sides
 const USD = false;
@@ -81,6 +81,7 @@ class TradeBot {
             logMessage('INFO', 'Position Info', `You have the following position:\nBTC: ${this._btcHoldings}\nUSD: ${this._usdHoldings}\nSide: ${this._side ? 'BTC' : 'USD'}`);
 
             this._operationPending = false;
+            this._operationRemainingSize = 0;
 
             return getDB();
         }).then((db) => {
@@ -253,10 +254,9 @@ class TradeBot {
                     // ensures that their platform is always the source of truth and not us so it seems ok to halt any trades until this is done.
                     this.fetchPosition();
                 }
-                // YES I KNOW cancelled is spelled wrong... :(
                 else if (data.reason === 'canceled') {
                     // double check that none of it was sold, if so we need to re-fetch our position
-                    if (this._operationRemainingSize !== parseFloat(data.remaining_size)) {
+                    if (parseFloat(data.remaining_size) < this._operationRemainingSize) {
                         this.fetchPosition();
                     }
                 }
@@ -267,8 +267,8 @@ class TradeBot {
     buy(price, slope) {
         this._operationPending = true;
 
-        const buyPrice = (price - 0.01).toFixed(2);
-        const size = (this._usdHoldings / buyPrice).toFixed(8);
+        const buyPrice = toDigit(price - 0.01, 2);
+        const size = toDigit(this._usdHoldings / buyPrice, 8);
         
         this._operationRemainingSize = size;
 
@@ -298,7 +298,7 @@ class TradeBot {
     sell(price, slope) {
         this._operationPending = true;
 
-        const sellPrice = (price + 0.01).toFixed(2);
+        const sellPrice = toDigit(price + 0.01, 2);
         
         logMessage('INFO', 'Trade Logic', `Executing a 'sell' limit order at: ${sellPrice}, size: ${this._btcHoldings} because of slope: ${slope}`);
         
@@ -330,6 +330,7 @@ class TradeBot {
 
         this._restClient.cancelOrders().then((result) => {
             this._operationPending = false;
+            this._operationRemainingSize = 0;
         }).catch((err) => {
             logMessage('CRIT', 'Trade Logic', `We could not cancel all orders bc: ${err}`);
         });

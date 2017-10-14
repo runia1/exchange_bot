@@ -81,9 +81,15 @@ const transporter = nodemailer.createTransport({
   }
 });
 
+const toDigit = (float, decimals) => {
+    const offset = Math.pow(10, decimals);
+    return parseInt(float * offset) / offset;
+};
+
 module.exports = {
-  getDB,
-  logMessage,
-  sendEmail,
-  ObjectId
+    getDB,
+    ObjectId
+    logMessage,
+    sendEmail, 
+    toDigit
 };
