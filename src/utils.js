@@ -88,7 +88,7 @@ const toDigit = (float, decimals) => {
 
 module.exports = {
     getDB,
-    ObjectId
+    ObjectId,
     logMessage,
     sendEmail, 
     toDigit
