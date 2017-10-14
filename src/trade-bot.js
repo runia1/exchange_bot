@@ -253,7 +253,8 @@ class TradeBot {
                     // ensures that their platform is always the source of truth and not us so it seems ok to halt any trades until this is done.
                     this.fetchPosition();
                 }
-                else if (data.reason === 'cancelled') {
+                // YES I KNOW cancelled is spelled wrong... :(
+                else if (data.reason === 'canceled') {
                     // double check that none of it was sold, if so we need to re-fetch our position
                     if (this._operationRemainingSize !== parseFloat(data.remaining_size)) {
                         this.fetchPosition();
