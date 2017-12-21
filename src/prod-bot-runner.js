@@ -19,28 +19,11 @@ const express = require('express');
 const cors = require('cors');
 
 const MINUTES = 60*1000;
+const HOURS = 60*MINUTES;
+const DAYS = 24*HOURS;
 
-// 1792
-/*const EMA_LENGTH = 12 * MINUTES;
-const BUY_THRESHOLD = 0.0000021;
-const SELL_THRESHOLD = -0.0000021;*/
-
-// 1859
-/*const EMA_LENGTH = 8 * MINUTES;
-const BUY_THRESHOLD = 0.0000021;
-const SELL_THRESHOLD = -0.0000021;*/
-
-// 1926
-const EMA_LENGTH = 8 * MINUTES;
-const BUY_THRESHOLD = 0.000004;
-const SELL_THRESHOLD = -0.000004;
-
-/*
-const EMA_LENGTH = 3 * MINUTES;
-const BUY_THRESHOLD = 0.000004;
-const SELL_THRESHOLD = -0.000004;
-*/
-
+const EMA_LENGTH1 = 1*HOURS;
+const EMA_LENGTH2 = 6*HOURS;
 
 const DROP_THRESHOLD = 500.00; // if it drops this far from the all_time_high sell and send an email!
 const store = true;
@@ -56,7 +39,7 @@ const clientSource = new ClientProvider(PROD, PRODUCT_ID, start, end);
 const restClient = clientSource.getRestClient();
 const websocketClient = clientSource.getWebsocketClient();
 
-const tradeBot = new TradeBot(restClient, websocketClient, EMA_LENGTH, BUY_THRESHOLD, SELL_THRESHOLD, DROP_THRESHOLD, store);
+const tradeBot = new TradeBot(restClient, websocketClient, EMA_LENGTH1, EMA_LENGTH2, store);
 
 tradeBot.run();
 
