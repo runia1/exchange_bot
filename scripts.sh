@@ -1,8 +1,5 @@
 #!/bin/bash
 
-# build
-# no need to build #alias build:all='npm run build:all'
-
 # deploy
 alias deploy:bot='node src/prod-bot-runner.js &> logs/bot.log &'
 alias deploy:api='node src/api.js &> logs/api.log &'
@@ -25,4 +22,4 @@ REDWARNING='\o033[4;31m'
 # tail
 log_color="sed -e 's/INFO/${GREEN}INFO${WHITE}/' -e 's/DEBUG/${GREY}DEBUG${WHITE}/' -e 's/ERROR/${ORANGE}ERROR${WHITE}/' -e 's/CRIT/${RED}CRIT${WHITE}/' -e 's/EMERG/${REDWARNING}EMERG${WHITE}/'"
 alias tail:bot="tail -f logs/bot.log | $log_color"
-alias tail:api='tail -f logs/api.log'
+alias tail:api="tail -f logs/api.log | $log_color"
