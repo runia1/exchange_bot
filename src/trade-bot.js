@@ -10,6 +10,8 @@ const { getDB, logMessage, toDigit } = require('./utils');
 // sides
 const USD = false;
 const BITCOIN = true;
+const BELOW = false;
+const ABOVE = true;
 
 const PRODUCT_ID = 'BTC-USD';
 const GDAX_FEE = 0.0025; // .25% on taker fills
@@ -20,31 +22,29 @@ const USD_TOTAL_INVESTMENT = 1500.00;
 const TRADE_TIMEOUT = 15000; // timeout trade if a match doesn't occur within 15 seconds
 
 class TradeBot {
-    constructor(restClient, websocketClient, emaLength, buyThreshold, sellThreshold, dropThreshold, store = false) {
-        this._emaLength =  emaLength;
-        this._buyThreshold = buyThreshold;
-        this._sellThreshold = sellThreshold;
-        this._dropThreshold = dropThreshold;
-
-        this._store = store;
-
-        this._emaCalculator = null;
-
+    constructor(restClient, websocketClient, emaLength1, emaLength2, store = false) {
         this._restClient = restClient;
         this._websocketClient = websocketClient;
+        
+        this._emaLength1 = emaLength1;
+        this._emaLength2 = emaLength2;
+
+        this._emaCalculator1 = null;
+        this._emaCalculator2 = null;
+        this._emaSide = BUY;
+
+        this._store = store;
 
         this._btcHoldings = 0.00;
         this._usdHoldings = 0.00;
         this._side = BITCOIN;
 
         this._operationPending = false;
-        this._operationRemainingSize = 0;
 
         // TODO: we could make this do an actual lookup someday.. maybe from our database
-        this._allTimeHigh = 4980.00;
+        this._allTimeHigh = 19000.00;
 
         this._lastSequence = 0;
-        this._lastEMA = 0;
         this._lastTime = null;
 
         this._tradeTimer = null;
@@ -54,7 +54,7 @@ class TradeBot {
         // fetch initial position
         this.fetchPosition();
 
-        // must bind this otherwise it runs in the context of MockWebsocketClient
+        // must bind these otherwise it runs in the context of MockWebsocketClient
         this.matchHandler = this.matchHandler.bind(this);
         this.closeHandler = this.closeHandler.bind(this);
     }
@@ -81,19 +81,19 @@ class TradeBot {
             logMessage('INFO', 'Position Info', `You have the following position:\nBTC: ${this._btcHoldings}\nUSD: ${this._usdHoldings}\nSide: ${this._side ? 'BTC' : 'USD'}`);
 
             this._operationPending = false;
-            this._operationRemainingSize = 0;
 
             return getDB();
         }).then((db) => {
-            // TODO: make this respect 'store' flag
-            // store the new position
-            db.collection('positions').insertOne({
-                time: new Date(),
-                usd: this._usdHoldings,
-                btc: this._btcHoldings
-            }).then((res) => {
-                // do nothing
-            });
+            if (this._store) {
+                // store the new position
+                db.collection('positions').insertOne({
+                    time: new Date(),
+                    usd: this._usdHoldings,
+                    btc: this._btcHoldings
+                }).then((res) => {
+                    // do nothing
+                });
+            }
         }).catch((err) => {
             logMessage('CRIT', 'Fetch Position', `Could not fetch position, err: ${err}`);
             // retry
@@ -102,8 +102,9 @@ class TradeBot {
     }
 
     run() {
-        // start the ema calculator
-        this._emaCalculator = MovingAverage(this._emaLength);
+        // start the ema calculators
+        this._emaCalculator1 = MovingAverage(this._emaLength1);
+        this._emaCalculator2 = MovingAverage(this._emaLength2);
 
         // every time we start this thing up we need to get some initial values before we let it loose. 
         // To do this we temporarily hook up a small event handler in charge of preloading those values. 
@@ -112,11 +113,17 @@ class TradeBot {
             if (data.type === 'match') {
                 this._lastSequence = data.sequence;
                 this._lastTime = Date.parse(data.time);
-                this._emaCalculator.push(this._lastTime, data.price);
-                this._lastEMA = this._emaCalculator.movingAverage();
+                this._emaCalculator1.push(this._lastTime, data.price);
+                this._emaCalculator2.push(this._lastTime, data.price);
+                
+                if (this._emaCalculator1.movingAverage() < this._emaCalculator2.movingAverage()) {
+                    this._emaSide = BELOW;
+                }
+                else {
+                    this._emaSide = ABOVE;
+                }
 
                 this._websocketClient.removeListener('message', preloadHandler);
-
                 this._websocketClient.addListener('message', this.matchHandler);
             }
         };
@@ -133,10 +140,10 @@ class TradeBot {
 
     stop() {
         this._websocketClient.removeListener('message', this.matchHandler);
-
         this._websocketClient.removeListener('close', this.closeHandler);
 
-        this._emaCalculator = null;
+        this._emaCalculator1 = null;
+        this._emaCalculator2 = null;
     }
 
     closeHandler(data) {
@@ -182,18 +189,46 @@ class TradeBot {
             const dateTimestamp = Date.parse(data.time);
 
             // calc emas
-            this._emaCalculator.push(dateTimestamp, data.price);
-            const ema = this._emaCalculator.movingAverage();
-
-            // calc new slope
-            const slope = (ema - this._lastEMA) / (dateTimestamp - this._lastTime);
-
+            this._emaCalculator1.push(dateTimestamp, data.price);
+            this._emaCalculator2.push(dateTimestamp, data.price);
+            
+            const ema1 = this._emaCalculator.movingAverage();
+            const ema2 = this._emaCalculator.movingAverage();
+            
             // need to re-assign these as fast as possible so that the next message coming in has the new values for calculations
             this._lastTime = dateTimestamp;
-            this._lastEMA = ema;
 
             if (!this._operationPending) {
-                // handle the divide by 0 problem.
+                // if it's BELOW
+                if (ema1 < ema2) {
+                    // if it was ABOVE before...
+                    if (this._emaSide === ABOVE) {
+                        // if we're holding BTC, we need to sell.
+                        if (this._side === BITCOIN) {
+                            //this.sell(data.price);
+                        }
+                        
+                        logMessage('INFO', 'Trade Logic', `Executing a 'sell' order at: ${price}`);
+                        
+                        this._emaSide = BELOW;
+                    }
+                }
+                // if it's ABOVE
+                else {
+                    // if it was BELOW before...
+                    if (this._emaSide === BELOW) {
+                        // if we're not holding BTC, we need to buy.
+                        if (this._side === USD) {
+                            //this.buy(data.price);
+                        }
+                        
+                        logMessage('INFO', 'Trade Logic', `Executing a 'buy' order at: ${price}`);
+                        
+                        this._emaSide = ABOVE;
+                    }
+                }
+                
+                /*// handle the divide by 0 problem.
                 if (Number.isFinite(slope)) {
                     // if we are currently exposed, side === BTC... check if we need to do anything
                     if (this._side === BITCOIN) {
@@ -207,7 +242,7 @@ class TradeBot {
                             this.buy(data.price, slope);
                         }
                     }
-                }
+                }*/
             }
 
             // TODO: we really shouldn't need this block...
@@ -235,7 +270,8 @@ class TradeBot {
                 this.savePoint({
                     time: new Date(dateTimestamp),
                     price: data.price,
-                    ema
+                    ema1,
+                    ema2
                 });
             }
         }
@@ -246,7 +282,7 @@ class TradeBot {
 
             // if we get this, it means that our 'user' channel is letting us know that an order was filled
             if (data.type === 'done') {
-                if (data.reason === 'filled') {
+                if (data.reason === 'filled' || data.reason === 'canceled') {
                     // kill the trade timer
                     clearTimeout(this._tradeTimer);
 
@@ -254,32 +290,19 @@ class TradeBot {
                     // ensures that their platform is always the source of truth and not us so it seems ok to halt any trades until this is done.
                     this.fetchPosition();
                 }
-                else if (data.reason === 'canceled') {
-                    // double check that none of it was sold, if so we need to re-fetch our position
-                    if (parseFloat(data.remaining_size) < this._operationRemainingSize) {
-                        this.fetchPosition();
-                    }
-                }
             }
         }
     }
 
-    buy(price, slope) {
+    buy(price) {
         this._operationPending = true;
 
-        const buyPrice = toDigit(price - 0.01, 2);
-        const size = toDigit(this._usdHoldings / buyPrice, 8);
-        
-        this._operationRemainingSize = size;
-
-        logMessage('INFO', 'Trade Logic', `Executing a 'buy' limit order at: ${buyPrice}, size: ${size} because of slope: ${slope}`);
+        logMessage('INFO', 'Trade Logic', `Executing a 'buy' order at: ${price}`);
 
         this._restClient.buy({
-            type: 'limit',
-            price: buyPrice,          // USD
-            size: size,               // BTC
-            product_id: PRODUCT_ID,
-            post_only: true
+            type: 'market',
+            funds: this._usdHoldings.toFixed(2),
+            product_id: PRODUCT_ID
         }).then((result) => {
             // this means it didn't go through :(
             if ('message' in result) {
@@ -291,31 +314,24 @@ class TradeBot {
             }, TRADE_TIMEOUT);
         }).catch((err) => {
             this._operationPending = false;
-            logMessage('ERROR', 'Trade Logic', `Failed to execute a 'buy' limit trade at: ${buyPrice}, size: ${size} which was triggered bc of slope: ${slope}, err: ${err}`);
+            logMessage('ERROR', 'Trade Logic', `Failed to execute a 'buy' order at: ${price}, err: ${err}`);
 
             // this happens sometimes when their servers are too slow :(, just refresh our position
-            // TODO: maybe change this to calculate it ourselves...
             if (err === 'Insufficient funds') {
                 this.fetchPosition();
             }
         });
     }
 
-    sell(price, slope) {
+    sell(price) {
         this._operationPending = true;
-
-        const sellPrice = toDigit(price + 0.01, 2);
         
-        logMessage('INFO', 'Trade Logic', `Executing a 'sell' limit order at: ${sellPrice}, size: ${this._btcHoldings} because of slope: ${slope}`);
-        
-        this._operationRemainingSize = this._btcHoldings;
+        logMessage('INFO', 'Trade Logic', `Executing a 'sell' limit order at: ${price}`);
         
         this._restClient.sell({
-            type: 'limit',
-            price: sellPrice,           // USD
-            size: this._btcHoldings,    // BTC
-            product_id: PRODUCT_ID,
-            post_only: true
+            type: 'market',
+            size: this._btcHoldings.toFixed(8),    // BTC
+            product_id: PRODUCT_ID
         }).then((result) => {
             // this means it didn't go through :(
             if ('message' in result) {
@@ -327,7 +343,7 @@ class TradeBot {
             }, TRADE_TIMEOUT);
         }).catch((err) => {
             this._operationPending = false;
-            logMessage('ERROR', 'Trade Logic', `Failed to execute a 'sell' limit trade at: ${sellPrice}, size: ${this._btcHoldings} which was triggered bc of slope: ${slope}, err: ${err}`);
+            logMessage('ERROR', 'Trade Logic', `Failed to execute a 'sell' order at: ${price}, err: ${err}`);
 
             // this happens sometimes when their servers are too slow :(, just refresh our position
             if (err === 'Insufficient funds') {
@@ -341,7 +357,6 @@ class TradeBot {
 
         this._restClient.cancelOrders().then((result) => {
             this._operationPending = false;
-            this._operationRemainingSize = 0;
         }).catch((err) => {
             logMessage('CRIT', 'Trade Logic', `We could not cancel all orders bc: ${err}`);
         });
@@ -350,7 +365,7 @@ class TradeBot {
     savePoint(point) {
         this._points.push(point);
 
-        if (this._points.length === 100) {
+        if (this._points.length === 500) {
             // put the new ema in the db
             getDB().then((db) => {
                 return db.collection('points').insertMany(this._points);
