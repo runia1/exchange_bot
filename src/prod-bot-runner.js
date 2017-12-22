@@ -26,7 +26,7 @@ const EMA_LENGTH1 = 1*HOURS;
 const EMA_LENGTH2 = 6*HOURS;
 
 const DROP_THRESHOLD = 500.00; // if it drops this far from the all_time_high sell and send an email!
-const store = true;
+const store = false;
 
 const PRODUCT_ID = 'BTC-USD';
 

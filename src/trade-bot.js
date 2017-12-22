@@ -182,7 +182,6 @@ class TradeBot {
                 logMessage('ERROR', 'Websocket Error', `Incorrect sequence order. Expected > ${this._lastSequence}, got: ${data.sequence}`);
                 return;
             }
-
             this._lastSequence = data.sequence;
 
             data.price = parseFloat(data.price);
@@ -210,7 +209,7 @@ class TradeBot {
                             //this.sell(data.price);
                         }
                         
-                        logMessage('INFO', 'Trade Logic', `Executing a 'sell' order at: ${price}`);
+                        logMessage('INFO', 'Trade Logic', `Executing a 'sell' order at: ${data.price}`);
                         
                         this._emaSide = BELOW;
                     }
@@ -224,7 +223,7 @@ class TradeBot {
                             //this.buy(data.price);
                         }
                         
-                        logMessage('INFO', 'Trade Logic', `Executing a 'buy' order at: ${price}`);
+                        logMessage('INFO', 'Trade Logic', `Executing a 'buy' order at: ${data.price}`);
                         
                         this._emaSide = ABOVE;
                     }
