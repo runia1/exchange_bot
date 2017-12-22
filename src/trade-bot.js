@@ -31,7 +31,7 @@ class TradeBot {
 
         this._emaCalculator1 = null;
         this._emaCalculator2 = null;
-        this._emaSide = BUY;
+        this._emaSide = BELOW;
 
         this._store = store;
 
