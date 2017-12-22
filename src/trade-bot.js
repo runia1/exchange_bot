@@ -192,8 +192,8 @@ class TradeBot {
             this._emaCalculator1.push(dateTimestamp, data.price);
             this._emaCalculator2.push(dateTimestamp, data.price);
             
-            const ema1 = this._emaCalculator.movingAverage();
-            const ema2 = this._emaCalculator.movingAverage();
+            const ema1 = this._emaCalculator1.movingAverage();
+            const ema2 = this._emaCalculator2.movingAverage();
             
             // need to re-assign these as fast as possible so that the next message coming in has the new values for calculations
             this._lastTime = dateTimestamp;
