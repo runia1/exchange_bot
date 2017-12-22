@@ -110,7 +110,9 @@ class TradeBot {
         // To do this we temporarily hook up a small event handler in charge of preloading those values. 
         // We then remove it and hook up our more permanent event handler which has trade logic.
         const preloadHandler = (data) => {
-            if (data.type === 'match') {
+            console.dir(data);
+            
+            /*if (data.type === 'match') {
                 this._lastSequence = data.sequence;
                 this._lastTime = Date.parse(data.time);
                 this._emaCalculator1.push(this._lastTime, data.price);
@@ -125,7 +127,7 @@ class TradeBot {
 
                 this._websocketClient.removeListener('message', preloadHandler);
                 this._websocketClient.addListener('message', this.matchHandler);
-            }
+            }*/
         };
         this._websocketClient.addListener('message', preloadHandler);
 
