@@ -110,6 +110,8 @@ class TradeBot {
         // To do this we temporarily hook up a small event handler in charge of preloading those values. 
         // We then remove it and hook up our more permanent event handler which has trade logic.
         const preloadHandler = (data) => {
+            console.log(typeof data);
+            
             console.dir(data);
             
             /*if (data.type === 'match') {
