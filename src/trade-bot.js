@@ -31,7 +31,6 @@ class TradeBot {
 
         this._emaCalculator1 = null;
         this._emaCalculator2 = null;
-        this._emaSide = BELOW;
 
         this._store = store;
 
@@ -117,13 +116,6 @@ class TradeBot {
                 data.price = parseFloat(data.price);
                 this._emaCalculator1.push(this._lastTime, data.price);
                 this._emaCalculator2.push(this._lastTime, data.price);
-                
-                if (this._emaCalculator1.movingAverage() < this._emaCalculator2.movingAverage()) {
-                    this._emaSide = BELOW;
-                }
-                else {
-                    this._emaSide = ABOVE;
-                }
 
                 this._websocketClient.removeListener('message', preloadHandler);
                 this._websocketClient.addListener('message', this.matchHandler);
@@ -202,30 +194,20 @@ class TradeBot {
             if (!this._operationPending) {
                 // if it's BELOW
                 if (ema1 < ema2) {
-                    // if it was ABOVE before...
-                    if (this._emaSide === ABOVE) {
-                        // if we're holding BTC, we need to sell.
-                        if (this._side === BITCOIN) {
-                            //this.sell(data.price);
-                        }
-                        
+                    // if we're holding BTC, we need to sell.
+                    if (this._side === BITCOIN) {
                         logMessage('INFO', 'Trade Logic', `Executing a 'sell' order at: ${data.price}`);
-                        
-                        this._emaSide = BELOW;
+                        this._side = USD;
+                        //this.sell(data.price);
                     }
                 }
                 // if it's ABOVE
                 else {
-                    // if it was BELOW before...
-                    if (this._emaSide === BELOW) {
-                        // if we're not holding BTC, we need to buy.
-                        if (this._side === USD) {
-                            //this.buy(data.price);
-                        }
-                        
+                    // if we're not holding BTC, we need to buy.
+                    if (this._side === USD) {
                         logMessage('INFO', 'Trade Logic', `Executing a 'buy' order at: ${data.price}`);
-                        
-                        this._emaSide = ABOVE;
+                        this._side = BITCOIN;
+                        //this.buy(data.price);
                     }
                 }
                 
