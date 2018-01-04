@@ -5,6 +5,8 @@
 
 const { MongoClient, ObjectId } = require('mongodb');
 const nodemailer = require('nodemailer');
+const winston = require('winston');
+const { Loggly, flushLogsAndExit } = require('winston-loggly-bulk');
 
 // just connect the first time and the other times respond with global_db
 let global_db = null;
@@ -18,37 +20,23 @@ const getDB = () => {
   }
 };
 
-/**
- * log a message and send it in an email
- *
- * @param log_level
- * @param topic
- * @param msg
- */
-const logMessage = (log_level, topic, msg) => {
-  msg = `${new Date().toLocaleString()} ${log_level} => topic: ${topic} msg: ${msg}`;
 
-  switch(log_level) {
-      case 'CRIT':
-      case 'ERROR':
-      case 'EMERG':
-          // log it with backtrace
-          console.error(msg);
-          // email it
-          //sendEmail(topic, msg);
-          break;
-      case 'INFO':
-          // log it
-          console.log(msg);
-          // email it
-          //sendEmail(topic, msg);
-          break;
-      default:
-        // log it
-        console.log(msg);
-        // do nothing, you can use `tail:<app name>` to see all other logs
-  }
-};
+/**
+ * Set up the winston logger
+ */
+const logglyCredentials = require('../keys/loggly.json');
+const logger = winston.createLogger({
+    level: 'silly',
+    format: winston.format.json(),
+    transports: [
+        new Loggly({
+            ...logglyCredentials,
+            tags: ["Winston-NodeJS"],
+            json: true
+        })
+    ]
+});
+
 
 /**
  * Send an email
@@ -66,7 +54,7 @@ const sendEmail = (subject, text) => {
 
   transporter.sendMail(mailOptions, (error, info) => {
     if (error) {
-      console.log(`${new Date()} CRIT => Failed to send email on above log line. Error: ${error}`);
+      logger.error(`Failed to send email on above log line. Error: ${error}`);
     }
   });
 };
@@ -89,7 +77,8 @@ const toDigit = (float, decimals) => {
 module.exports = {
     getDB,
     ObjectId,
-    logMessage,
-    sendEmail, 
+    logger,
+    flushLogsAndExit,
+    sendEmail,
     toDigit
 };

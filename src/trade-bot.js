@@ -2,10 +2,10 @@
 
 
 //import MovingAverage from 'moving-average';
-//import { getDB, logMessage } from './utils';
+//import { getDB, logger, toDigit } from './utils';
 
 const MovingAverage = require('moving-average');
-const { getDB, logMessage, toDigit } = require('./utils');
+const { getDB, logger, toDigit } = require('./utils');
 
 // sides
 const USD = false;
@@ -77,7 +77,7 @@ class TradeBot {
                 this._side = BITCOIN;
             }
 
-            logMessage('INFO', 'Position Info', `You have the following position:\nBTC: ${this._btcHoldings}\nUSD: ${this._usdHoldings}\nSide: ${this._side ? 'BTC' : 'USD'}`);
+            logger.info(`You have the following position:\nBTC: ${this._btcHoldings}\nUSD: ${this._usdHoldings}\nSide: ${this._side ? 'BTC' : 'USD'}`);
 
             this._operationPending = false;
 
@@ -94,7 +94,7 @@ class TradeBot {
                 });
             }
         }).catch((err) => {
-            logMessage('CRIT', 'Fetch Position', `Could not fetch position, err: ${err}`);
+            logger.error(`Could not fetch position, err: ${err}`);
             // retry
             this.fetchPosition();
         });
@@ -125,7 +125,7 @@ class TradeBot {
 
         // if there is an error let me know.
         this._websocketClient.on('error', (err) => {
-            logMessage('ERROR', 'Websocket Error', err);
+            logger.error(`Websocket Error: ${err}`);
         });
 
         // if it closes reconnect
@@ -141,7 +141,7 @@ class TradeBot {
     }
 
     closeHandler(data) {
-        logMessage('ERROR', 'Websocket Error', `websocket closed unexpectedly with data: ${data}. Attempting to re-connect.`);
+        logger.error(`Websocket closed unexpectedly with data: ${data}. Attempting to re-connect.`);
 
         // try to re-connect the first time...
         this._websocketClient.connect();
@@ -155,7 +155,7 @@ class TradeBot {
                 // send me a email if it keeps failing every 30/2 = 15 minutes
                 if (count % 30 === 0) {
                     let time_since = 30 * count;
-                    logMessage('CRIT', 'Websocket Error', `Attempting to re-connect for the ${count} time. It has been ${time_since} seconds since we lost connection.`);
+                    logger.error(`Websocket attempting to re-connect for the ${count} time. It has been ${time_since} seconds since we lost connection.`);
                 }
                 this._websocketClient.connect();
             }
@@ -171,7 +171,7 @@ class TradeBot {
             // we have to make sure these matches are in correct sequence otherwise our ema will not calculate correctly.
             // if it is not in the correct sequence we simply throw it out.. yes our ema will be slightly off but that is ok.
             if (data.sequence < this._lastSequence) {
-                logMessage('ERROR', 'Websocket Error', `Incorrect sequence order. Expected > ${this._lastSequence}, got: ${data.sequence}`);
+                logger.error(`Incorrect sequence order. Expected > ${this._lastSequence}, got: ${data.sequence}`);
                 return;
             }
             this._lastSequence = data.sequence;
@@ -196,7 +196,7 @@ class TradeBot {
                 if (ema1 < ema2) {
                     // if we're holding BTC, we need to sell.
                     if (this._side === BITCOIN) {
-                        logMessage('INFO', 'Trade Logic', `Executing a 'sell' order at: ${data.price}`);
+                        logger.info(`Executing a 'sell' order at: ${data.price}`);
                         this._side = USD;
                         //this.sell(data.price);
                     }
@@ -205,7 +205,7 @@ class TradeBot {
                 else {
                     // if we're not holding BTC, we need to buy.
                     if (this._side === USD) {
-                        logMessage('INFO', 'Trade Logic', `Executing a 'buy' order at: ${data.price}`);
+                        logger.info(`Executing a 'buy' order at: ${data.price}`);
                         this._side = BITCOIN;
                         //this.buy(data.price);
                     }
@@ -261,7 +261,7 @@ class TradeBot {
 
         // it was something else user related like 'received' or 'open'
         else {
-            logMessage('DEBUG', 'Trade Logic', `Got a message that wasn't a match: ${JSON.stringify(data)}`);
+            logger.debug(`Got a message that wasn't a match: ${JSON.stringify(data)}`);
 
             // if we get this, it means that our 'user' channel is letting us know that an order was filled
             if (data.type === 'done') {
@@ -280,7 +280,7 @@ class TradeBot {
     buy(price) {
         this._operationPending = true;
 
-        logMessage('INFO', 'Trade Logic', `Executing a 'buy' order at: ${price}`);
+        logger.info(`Executing a 'buy' order at: ${price}`);
 
         this._restClient.buy({
             type: 'market',
@@ -297,7 +297,7 @@ class TradeBot {
             }, TRADE_TIMEOUT);
         }).catch((err) => {
             this._operationPending = false;
-            logMessage('ERROR', 'Trade Logic', `Failed to execute a 'buy' order at: ${price}, err: ${err}`);
+            logger.error(`Failed to execute a 'buy' order at: ${price}, err: ${err}`);
 
             // this happens sometimes when their servers are too slow :(, just refresh our position
             if (err === 'Insufficient funds') {
@@ -308,8 +308,8 @@ class TradeBot {
 
     sell(price) {
         this._operationPending = true;
-        
-        logMessage('INFO', 'Trade Logic', `Executing a 'sell' limit order at: ${price}`);
+
+        logger.info(`Executing a 'sell' limit order at: ${price}`);
         
         this._restClient.sell({
             type: 'market',
@@ -326,7 +326,7 @@ class TradeBot {
             }, TRADE_TIMEOUT);
         }).catch((err) => {
             this._operationPending = false;
-            logMessage('ERROR', 'Trade Logic', `Failed to execute a 'sell' order at: ${price}, err: ${err}`);
+            logger.error(`Failed to execute a 'sell' order at: ${price}, err: ${err}`);
 
             // this happens sometimes when their servers are too slow :(, just refresh our position
             if (err === 'Insufficient funds') {
@@ -336,12 +336,12 @@ class TradeBot {
     }
 
     cancel() {
-        logMessage('INFO', 'Trade Logic', `Cancelling all orders bc an order didn't fill within ${TRADE_TIMEOUT} milliseconds`);
+        logger.info(`Cancelling all orders bc an order didn't fill within ${TRADE_TIMEOUT} milliseconds`);
 
         this._restClient.cancelOrders().then((result) => {
             this._operationPending = false;
         }).catch((err) => {
-            logMessage('CRIT', 'Trade Logic', `We could not cancel all orders bc: ${err}`);
+            logger.error(`We could not cancel all orders bc: ${err}`);
         });
     }
 
@@ -355,7 +355,7 @@ class TradeBot {
             }).then((result) => {
                 this._points = [];
             }).catch((err) => {
-                logMessage('CRIT', 'Database failure', `Failed to save points, reason: ${err}`);
+                logger.error(`Mongo Failed to save points, reason: ${err}`);
             });
         }
     }
@@ -376,9 +376,9 @@ class TradeBot {
             this._side = USD;
             this._operationPending = false;
 
-            logMessage('EMERG', reason, `BTC has dropped to: ${currentPrice} and your BTC holdings were sold bc ${reason}.`);
+            logger.error(`BTC has dropped to: ${currentPrice} and your BTC holdings were sold bc ${reason}.`);
         }).catch((err) => {
-            logMessage('CRIT', 'emergency sell failed', `tried to do an emergency sell at: ${currentPrice}, but failed due to: ${err}. Original reason for trying to sell: ${reason}`);
+            logger.error(`Tried to do an emergency sell at: ${currentPrice}, but failed due to: ${err}. Original reason for trying to sell: ${reason}`);
         });
     }
 

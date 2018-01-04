@@ -4,7 +4,7 @@
 
 //import { ClientProvider, PROD, TEST } from './client-provider';
 //import { TradeBot } from './trade-bot';
-//import { logMessage } from './utils';
+//import { logger } from './utils';
 
 //import express from 'express';
 //import cors from 'cors';
@@ -13,7 +13,7 @@ process.env.TZ = 'America/Boise';
 
 const { ClientProvider, PROD, TEST } = require('./client-provider');
 const { TradeBot } = require('./trade-bot');
-const { logMessage } = require('./utils');
+const { logger, flushLogsAndExit } = require('./utils');
 
 const express = require('express');
 const cors = require('cors');
@@ -74,9 +74,11 @@ app.listen(8081);
 
 // intercept bad things :(
 process.on('uncaughtException', (exception) => {
-    logMessage('CRIT', 'Process Unhandled Exception', exception.message);
+    logger.crit(`Process Unhandled Exception ${exception.message}`);
+    flushLogsAndExit();
 });
 
 process.on('unhandledRejection', (reason, p) => {
-    logMessage('CRIT', 'Process Unhandled Promise Rejection', `Unhandled Rejection, reason: ${reason}`);
+    logger.crit(`Process Unhandled Promise Rejection: ${reason}`);
+    flushLogsAndExit();
 });
