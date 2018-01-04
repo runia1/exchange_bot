@@ -27,7 +27,6 @@ const getDB = () => {
 const logglyCredentials = require('../keys/loggly.json');
 const logger = winston.createLogger({
     level: 'silly',
-    format: winston.format.json(),
     transports: [
         new Loggly({
             ...logglyCredentials,
