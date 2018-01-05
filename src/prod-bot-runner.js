@@ -74,11 +74,11 @@ app.listen(8081);
 
 // intercept bad things :(
 process.on('uncaughtException', (exception) => {
-    logger.crit(`Process Unhandled Exception ${exception.message}`);
+    logger.error(`Process Unhandled Exception ${exception.message}, Trace: ${exception.trace}`);
     flushLogsAndExit();
 });
 
 process.on('unhandledRejection', (reason, p) => {
-    logger.crit(`Process Unhandled Promise Rejection: ${reason}`);
+    logger.error(`Process Unhandled Promise Rejection: ${reason}`);
     flushLogsAndExit();
 });
