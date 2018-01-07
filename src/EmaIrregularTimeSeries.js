@@ -51,21 +51,17 @@ class EmaIrregularTimeSeries {
         if (length === undefined) {
             throw new Error('Cannot instantiate EmaIrregularTimeSeries with [length] undefined!');
         }
-        
-        // if they gave us a place to start check and make sure it has the required keys
-        if (start !== undefined) {
-            if (start.timestamp === undefined) {
-                throw new Error('Cannot instantiate EmaIrregularTimeSeries with [start.timestamp] undefined!');
-            }
-            if (start.value === undefined) {
-                throw new Error('Cannot instantiate EmaIrregularTimeSeries with [start.value] undefined!');
-            }
-            if (start.ema === undefined) {
-                throw new Error('Cannot instantiate EmaIrregularTimeSeries with [start.ema] undefined!');
-            }
+        if (start === undefined) {
+          throw new Error('Cannot instantiate EmaIrregularTimeSeries with [start] undefined!');
         }
-        else {
-            start = null;
+        if (start.timestamp === undefined) {
+            throw new Error('Cannot instantiate EmaIrregularTimeSeries with [start.timestamp] undefined!');
+        }
+        if (start.value === undefined) {
+            throw new Error('Cannot instantiate EmaIrregularTimeSeries with [start.value] undefined!');
+        }
+        if (start.ema === undefined) {
+            throw new Error('Cannot instantiate EmaIrregularTimeSeries with [start.ema] undefined!');
         }
 
         this.last = start;
@@ -84,7 +80,7 @@ class EmaIrregularTimeSeries {
      * @returns  Promise
      */
     nextValue(next) {
-        
+
         let resolve;
         const p = new Promise((res, rej) => {
             resolve = res;
@@ -96,35 +92,27 @@ class EmaIrregularTimeSeries {
             value: next.value,
             resolve
         });
-        
-        // if we're not already processing, make a call to processQueue()
-        if (!this.queueProcessing) {
+
+        // use this little trick to defer processing till later if there are still more to enqueue
+        setTimeout(() => {
             this.processQueue();
-        }
+        }, 0);
         
         return p;
     }
     
     processQueue() {
-        const next = this.queue.dequeue();
-        
-        // if we don't have a last, this will be the last
-        if (this.last === null) {
-            this.last = {
-                timestamp: next.timestamp,
-                value: next.value,
-                ema: next.value
-            };
+        if (this.queue.getSize() && !this.queueProcessing) {
+            this.queueProcessing = true;
 
-            next.resolve(next.value);
-        }
-        else {
+            const next = this.queue.dequeue();
+
             // check if there are any other things in the queue with the same timestamp
             let more = true;
             let index = this.queue.getOldestIndex();
             const valuesAtThisTimestamp = [next.value];
             const resolvesAtThisTimestamp = [next.resolve];
-            while(more) {
+            while(this.queue.getSize() && more) {
                 const tmp = this.queue.getDataAtIndex(index++);
                 if (tmp.timestamp > next.timestamp) {
                     more = false;
@@ -139,14 +127,14 @@ class EmaIrregularTimeSeries {
                     this.queue.dequeue();
                 }
             }
-            
+
             // average the values at this timestamp and calc the ema for the average value
             let avgValue = 0;
             for (const value of valuesAtThisTimestamp) {
                 avgValue += value;
             }
             avgValue = avgValue / valuesAtThisTimestamp.length;
-            
+
             const tmp = (next.timestamp - this.last.timestamp) / this.length;
             const w = Math.exp(-tmp);
             const w2 = (1 - w) / tmp;
@@ -164,15 +152,8 @@ class EmaIrregularTimeSeries {
             for (const resolve of resolvesAtThisTimestamp) {
                 resolve(ema);
             }
-            
-            // if there are still things to process in the queue do it.
-            if (this.queue.getSize()) {
-                this.processQueue();
-            }
-            // otherwise lets set processing to false.
-            else {
-                this.queueProcessing = false;
-            }
+
+            this.queueProcessing = false;
         }
 
         /*
