@@ -55,4 +55,3 @@ for(const { timestamp, value, expected } of trades) {
         console.log(`Expected: [${expected}] got: [${tmpEma}]`);
     });
 }
-

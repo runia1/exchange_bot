@@ -3,7 +3,7 @@
 //import { getDB, logMessage } from './utils';
 //import { PublicClient } from 'gdax';
 
-const { getDB, logMessage } = require('./utils');
+const { getDB, logger } = require('./utils');
 const { PublicClient } = require('gdax');
 
 const PRODUCT_ID = 'BTC-USD';
@@ -19,26 +19,27 @@ let count = 0;
 let collection = [];
 
 readable.on('data', (data) => {
-  count++;
+    count++;
 
-  collection.push({
-    time: new Date(data.time), // turn it into a Date object here
-    price: data.price,
-    sequence: data.trade_id
-  });
-
-  // insert 5000 at a time.
-  if (count % 5000 === 0) {
-    getDB().then((db) => {
-      return db.collection('points').insertMany(collection);
-    }).then((result) => {
-      collection = [];
-    }).catch((err) => {
-      console.error("ERROR: " + err);
+    collection.push({
+        time: new Date(data.time), // turn it into a Date object here
+        price: data.price,
+        sequence: data.trade_id
     });
-  }
+
+    // insert 5000 at a time.
+    if (count % 5000 === 0) {
+        getDB()
+          .then((db) => {
+            return db.collection('points').insertMany(collection);
+        }).then((result) => {
+            collection = [];
+        }).catch((err) => {
+            logger.error(`Promise rejected: ${err}`);
+        });
+    }
 });
 
 readable.on('error', (err) => {
-  console.error("Err: " + err);
+    logger.error(`Readable error: ${err}`);
 });
