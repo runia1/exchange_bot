@@ -44,10 +44,6 @@ const ma3 = new EmaIrregularTimeSeries({
     start: startTrade
 });
 
-// Time range
-const end = new Date("Sat Sep 02 2017 11:45:00 GMT-0600 (MDT)");
-const start = end.setDate(end.getDate()-1); // minus 1 day
-
 // paginate through all these points and calculate the 3 emas and store them
 getDB().then((db) => {
     return db.collection('backtest_points')
@@ -58,6 +54,9 @@ getDB().then((db) => {
     // now that we have a cursor lets got to town
     while(cursor.hasNext()) {
         let point = tojson(cursor.next());
+        
+        // TODO: get this set up
+        
     }
 
 }).catch((err) => {
