@@ -63,7 +63,7 @@ getDB().then((db) => {
             const ma3Val = ma3.nextValue(trade);
             Promise.all([ma1Val, ma2Val, ma3Val]).then((values) => {
                 count++;
-                console.log(count);
+                console.dir(values);
                 pointsWithEmas.push(values);
             });
 
