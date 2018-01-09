@@ -22,8 +22,6 @@ getDB().then((db) => {
     // we need to add a fake ema for the first point
     startTrade.ema = startTrade.value;
 
-    console.dir(startTrade);
-
     // 12 * 5 min chunks = 12 candlestick ema for 5 min candlesticks == 60 min ema
     const ma1 = new EmaIrregularTimeSeries({
         length: 12 * 5 * MINUTE,
@@ -50,30 +48,18 @@ getDB().then((db) => {
         .batchSize(500);
 }).then((cursor) => {
     // now that we have a cursor lets got to town
-    //while(cursor.hasNext()) {
-        const point = cursor.next();
+    const promiseLoop = (promise) => {
+        promise.then((data) => {
+            console.dir(data);
 
-        point.then((p) => {
-            console.dir(p);
 
-            return cursor.next();
-        }).then((p) => {
-            console.dir(p);
 
-            return cursor.next();
-        }).then((p) => {
-            console.dir(p);
 
-            return cursor.next();
-        }).then((p) => {
-            console.dir(p);
-
-            return cursor.next();
+            promiseLoop(cursor.next());
         });
+    };
 
-        
-        // TODO: get this set up
-    //}
+    promiseLoop(cursor.next());
 }).catch((err) => {
     console.error(`Could not get points. Reason: ${err}`);
 });
