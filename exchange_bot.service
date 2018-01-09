@@ -1,0 +1,12 @@
+[Service]
+ExecStart=/usr/bin/node /home/ubuntu/www/exchange_bot/src/prod-bot-runner.js
+Restart=always
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=exchange_bot
+User=ubuntu
+Group=ubuntu
+Environment=NODE_ENV=production
+
+[Install]
+WantedBy=multi-user.target
