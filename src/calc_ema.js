@@ -15,37 +15,35 @@ const pointToValue = (point) => {
     };
 };
 
-let startTrade = {};
-
-getDB()
-.then((db) => {
+getDB().then((db) => {
     return db.collection('backtest_points').findOne({ _id: ObjectId("59c7c9210206240ce57f90af") });
 }).then((point) => {
-    startTrade = pointToValue(point);
+    const startTrade = pointToValue(point);
     // we need to add a fake ema for the first point
     startTrade.ema = startTrade.value;
-});
 
-// 12 * 5 min chunks = 12 candlestick ema for 5 min candlesticks == 60 min ema
-const ma1 = new EmaIrregularTimeSeries({
-    length: 12 * 5 * MINUTE,
-    start: startTrade
-});
+    console.dir(startTrade);
 
-// 12 * 15 min chunks = 12 candlestick ema for 15 min candlesticks == 180 min ema
-const ma2 = new EmaIrregularTimeSeries({
-    length: 12 * 15 * MINUTE,
-    start: startTrade
-});
+    // 12 * 5 min chunks = 12 candlestick ema for 5 min candlesticks == 60 min ema
+    const ma1 = new EmaIrregularTimeSeries({
+        length: 12 * 5 * MINUTE,
+        start: startTrade
+    });
 
-// 11 days
-const ma3 = new EmaIrregularTimeSeries({
-    length: 11 * DAY,
-    start: startTrade
-});
+    // 12 * 15 min chunks = 12 candlestick ema for 15 min candlesticks == 180 min ema
+    const ma2 = new EmaIrregularTimeSeries({
+        length: 12 * 15 * MINUTE,
+        start: startTrade
+    });
 
-// paginate through all these points and calculate the 3 emas and store them
-getDB().then((db) => {
+    // 11 days
+    const ma3 = new EmaIrregularTimeSeries({
+        length: 11 * DAY,
+        start: startTrade
+    });
+
+    return getDB();
+}).then((db) => {
     return db.collection('backtest_points')
         .find({ _id: ObjectId("59c7c9210206240ce57f90b0") })
         .sort({time: 1})
@@ -58,7 +56,6 @@ getDB().then((db) => {
         // TODO: get this set up
         console.dir(point);
     }
-
 }).catch((err) => {
     console.error(`Could not get points. Reason: ${err}`);
 });
