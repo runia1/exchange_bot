@@ -55,6 +55,20 @@ getDB().then((db) => {
 
         point.then((p) => {
             console.dir(p);
+
+            return cursor.next();
+        }).then((p) => {
+            console.dir(p);
+
+            return cursor.next();
+        }).then((p) => {
+            console.dir(p);
+
+            return cursor.next();
+        }).then((p) => {
+            console.dir(p);
+
+            return cursor.next();
         });
 
         
