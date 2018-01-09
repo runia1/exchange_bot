@@ -50,12 +50,16 @@ getDB().then((db) => {
         .batchSize(500);
 }).then((cursor) => {
     // now that we have a cursor lets got to town
-    while(cursor.hasNext()) {
-        let point = cursor.next();
+    //while(cursor.hasNext()) {
+        const point = cursor.next();
+
+        point.then((p) => {
+            console.dir(p);
+        });
+
         
         // TODO: get this set up
-        console.dir(point);
-    }
+    //}
 }).catch((err) => {
     console.error(`Could not get points. Reason: ${err}`);
 });
