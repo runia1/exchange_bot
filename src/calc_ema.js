@@ -45,7 +45,7 @@ getDB().then((db) => {
     return getDB();
 }).then((db) => {
     return db.collection('backtest_points')
-        .find({ _id: ObjectId("59c7c9210206240ce57f90b0") })
+        .find({ time: { $gte: new Date('2017-08-19 05:17:36.434Z') } })
         .sort({time: 1})
         .batchSize(500);
 }).then((cursor) => {
