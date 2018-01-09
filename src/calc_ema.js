@@ -53,12 +53,12 @@ getDB().then((db) => {
 }).then((cursor) => {
     // now that we have a cursor lets got to town
     while(cursor.hasNext()) {
-        let point = tojson(cursor.next());
+        let point = cursor.next();
         
         // TODO: get this set up
-        
+        console.dir(point);
     }
 
 }).catch((err) => {
-    logger.error(`Could not get points. Reason: ${err}`);
+    console.error(`Could not get points. Reason: ${err}`);
 });
