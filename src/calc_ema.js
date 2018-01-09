@@ -49,13 +49,17 @@ getDB().then((db) => {
 }).then((cursor) => {
     // now that we have a cursor lets got to town
     const promiseLoop = (promise) => {
-        promise.then((data) => {
-            console.dir(data);
+        promise.then((point) => {
+            const trade = pointToValue(point);
 
+            const ma1Val = ma1.nextValue(trade);
+            const ma2Val = ma2.nextValue(trade);
+            const ma3Val = ma3.nextValue(trade);
+            Promise.all([ma1Val, ma2Val, ma3Val]).then((values) => {
+                console.dir(values);
 
-
-
-            promiseLoop(cursor.next());
+                promiseLoop(cursor.next());
+            });
         });
     };
 
