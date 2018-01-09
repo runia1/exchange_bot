@@ -15,6 +15,8 @@ const pointToValue = (point) => {
     };
 };
 
+let ma1, ma2, ma3;
+
 getDB().then((db) => {
     return db.collection('backtest_points').findOne({ _id: ObjectId("59c7c9210206240ce57f90af") });
 }).then((point) => {
@@ -23,19 +25,19 @@ getDB().then((db) => {
     startTrade.ema = startTrade.value;
 
     // 12 * 5 min chunks = 12 candlestick ema for 5 min candlesticks == 60 min ema
-    const ma1 = new EmaIrregularTimeSeries({
+    ma1 = new EmaIrregularTimeSeries({
         length: 12 * 5 * MINUTE,
         start: startTrade
     });
 
     // 12 * 15 min chunks = 12 candlestick ema for 15 min candlesticks == 180 min ema
-    const ma2 = new EmaIrregularTimeSeries({
+    ma2 = new EmaIrregularTimeSeries({
         length: 12 * 15 * MINUTE,
         start: startTrade
     });
 
     // 11 days
-    const ma3 = new EmaIrregularTimeSeries({
+    ma3 = new EmaIrregularTimeSeries({
         length: 11 * DAY,
         start: startTrade
     });
