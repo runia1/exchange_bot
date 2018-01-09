@@ -107,6 +107,12 @@ class EmaIrregularTimeSeries {
 
             const next = this.queue.dequeue();
 
+            if (next.timestamp === this.last.timestamp) {
+                next.resolve(this.last.ema);
+                this.queueProcessing = false;
+                return;
+            }
+
             // check if there are any other things in the queue with the same timestamp
             let more = true;
             let index = this.queue.getOldestIndex();
