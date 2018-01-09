@@ -107,6 +107,8 @@ class EmaIrregularTimeSeries {
 
             const next = this.queue.dequeue();
 
+            // this is a catch just in case we still get two or more trades that come in with
+            // the same timestamp and they don't get processes together... just ignore the second
             if (next.timestamp === this.last.timestamp) {
                 next.resolve(this.last.ema);
                 this.queueProcessing = false;
