@@ -64,6 +64,10 @@ class EmaIrregularTimeSeries {
             throw new Error('Cannot instantiate EmaIrregularTimeSeries with [start.ema] undefined!');
         }
 
+        start.timestamp = parseInt(start.timestamp);
+        start.value = parseFloat(start.value);
+        start.ema = parseFloat(start.ema);
+
         this.last = start;
         
         this.queue = new Queue();
@@ -89,7 +93,7 @@ class EmaIrregularTimeSeries {
         // add it to the queue
         this.queue.enqueue({
             timestamp: next.timestamp,
-            value: next.value,
+            value: parseFloat(next.value),
             resolve
         });
 

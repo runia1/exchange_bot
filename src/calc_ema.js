@@ -51,28 +51,25 @@ getDB().then((db) => {
 }).then((cursor) => {
     // now that we have a cursor lets go to town
 
-    const pointsWithEmas = [];
     let count = 0;
 
     const promiseLoop = (promise) => {
         promise.then((point) => {
+            count++;
+
             const trade = pointToValue(point);
 
-            const ma1Val = ma1.nextValue(trade);
-            const ma2Val = ma2.nextValue(trade);
-            const ma3Val = ma3.nextValue(trade);
-            Promise.all([ma1Val, ma2Val, ma3Val]).then((values) => {
-                count++;
+            ma1.nextValue(trade).then((values) => {
                 console.dir(values);
-                pointsWithEmas.push(values);
             });
 
-            promiseLoop(cursor.next());
+            if (count < 2) {
+                promiseLoop(cursor.next());
+            }
         });
     };
 
     promiseLoop(cursor.next());
-
 }).catch((err) => {
     console.error(`Could not get points. Reason: ${err}`);
 });
