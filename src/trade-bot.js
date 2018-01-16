@@ -49,6 +49,8 @@ class TradeBot {
 
         this._points = [];
 
+        this._lastData = null;
+
         // fetch initial position
         this.fetchPosition();
 
@@ -184,8 +186,10 @@ class TradeBot {
             }
             this._lastSequence = data.sequence;
 
+            const timestamp = Date.parse(data.time);
+
             const trade = {
-                timestamp: Date.parse(data.time),
+                timestamp,
                 value: data.price
             };
 
@@ -224,6 +228,14 @@ class TradeBot {
                         ema2
                     });
                 }
+
+                // update _lastData with the new ema and match data
+                this._lastData = {
+                    value: data.price,
+                    timestamp,
+                    ema1,
+                    ema2
+                };
             });
 
             // update _allTimeHigh if it should be updated
@@ -364,6 +376,10 @@ class TradeBot {
             "BTC": this._btcHoldings,
             "USD": this._usdHoldings
         };
+    }
+
+    getLastData() {
+        return this._lastData;
     }
 }
 

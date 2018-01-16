@@ -13,7 +13,7 @@ process.env.TZ = 'America/Boise';
 
 const { ClientProvider, PROD, TEST } = require('./client-provider');
 const { TradeBot } = require('./trade-bot');
-const { logger, flushLogsAndExit } = require('./utils');
+const { logger, beforeExit, beforeStart } = require('./utils');
 
 const express = require('express');
 const cors = require('cors');
@@ -72,12 +72,12 @@ app.listen(8081);
 
 
 // intercept bad things :(
-process.on('uncaughtException', (exception) => {
-    logger.error(`Process Unhandled Exception ${exception.message}, Trace: ${exception.trace}`);
-    flushLogsAndExit();
+process.on('uncaughtException', (err) => {
+    logger.error(`Process Unhandled Exception ${err.message}, Trace: ${err.trace}`);
+    beforeExit(tradeBot.getLastData());
 });
 
 process.on('unhandledRejection', (reason, p) => {
     logger.error(`Process Unhandled Promise Rejection: ${reason}`);
-    flushLogsAndExit();
+    beforeExit(tradeBot.getLastData());
 });
