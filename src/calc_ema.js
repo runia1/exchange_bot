@@ -2,11 +2,12 @@
 
 const { getDB, ObjectId, logger, flushLogsAndExit } = require('./utils');
 const { EmaIrregularTimeSeries } = require('./EmaIrregularTimeSeries');
-const {} = require('mongodb');
 
 const MINUTE = 60 * 1000;
 const HOUR = 60 * MINUTE;
 const DAY = 24 * HOUR;
+
+const EMA_LENGTH = 12 * HOUR;
 
 const pointToValue = (point) => {
     return {
@@ -15,7 +16,7 @@ const pointToValue = (point) => {
     };
 };
 
-let ma1, ma2, ma3;
+let ma1;
 
 getDB().then((db) => {
     return db.collection('backtest_points').findOne({ _id: ObjectId("59c7c9210206240ce57f90af") });
@@ -24,21 +25,8 @@ getDB().then((db) => {
     // we need to add a fake ema for the first point
     startTrade.ema = startTrade.value;
 
-    // 12 * 5 min chunks = 12 candlestick ema for 5 min candlesticks == 60 min ema
     ma1 = new EmaIrregularTimeSeries({
-        length: 12 * 5 * MINUTE,
-        start: startTrade
-    });
-
-    // 12 * 15 min chunks = 12 candlestick ema for 15 min candlesticks == 180 min ema
-    ma2 = new EmaIrregularTimeSeries({
-        length: 12 * 15 * MINUTE,
-        start: startTrade
-    });
-
-    // 11 days
-    ma3 = new EmaIrregularTimeSeries({
-        length: 11 * DAY,
+        length: EMA_LENGTH,
         start: startTrade
     });
 
@@ -57,13 +45,14 @@ getDB().then((db) => {
         promise.then((point) => {
             count++;
 
-            const trade = pointToValue(point);
-
-            ma1.nextValue(trade).then((values) => {
+            ma1.nextValue(pointToValue(point)).then((values) => {
                 console.dir(values);
+
+
+
             });
 
-            if (count < 2) {
+            if (count < 1762199) {
                 promiseLoop(cursor.next());
             }
         });

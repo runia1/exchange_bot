@@ -4,7 +4,7 @@
 //import MovingAverage from 'moving-average';
 //import { getDB, logger, toDigit } from './utils';
 
-const MovingAverage = require('moving-average');
+const { EmaIrregularTimeSeries } = require('./EmaIrregularTimeSeries');
 const { getDB, logger, toDigit } = require('./utils');
 
 // sides
@@ -44,7 +44,6 @@ class TradeBot {
         this._allTimeHigh = 19000.00;
 
         this._lastSequence = 0;
-        this._lastTime = null;
 
         this._tradeTimer = null;
 
@@ -101,21 +100,30 @@ class TradeBot {
     }
 
     run() {
-        // start the ema calculators
-        this._emaCalculator1 = MovingAverage(this._emaLength1);
-        this._emaCalculator2 = MovingAverage(this._emaLength2);
-
         // every time we start this thing up we need to get some initial values before we let it loose. 
         // To do this we temporarily hook up a small event handler in charge of preloading those values. 
         // We then remove it and hook up our more permanent event handler which has trade logic.
         const preloadHandler = (data) => {
             if (data.type === 'match') {
                 this._lastSequence = data.sequence;
-                this._lastTime = Date.parse(data.time);
                 
                 data.price = parseFloat(data.price);
-                this._emaCalculator1.push(this._lastTime, data.price);
-                this._emaCalculator2.push(this._lastTime, data.price);
+
+                const start = {
+                    timestamp: Date.parse(data.time),
+                    value: data.price,
+                    ema: data.price
+                };
+
+                // start the ema calculators
+                this._emaCalculator1 = new EmaIrregularTimeSeries({
+                    length: this._emaLength1,
+                    start
+                });
+                this._emaCalculator2 = new EmaIrregularTimeSeries({
+                    length: this._emaLength2,
+                    start
+                });
 
                 this._websocketClient.removeListener('message', preloadHandler);
                 this._websocketClient.addListener('message', this.matchHandler);
@@ -140,8 +148,8 @@ class TradeBot {
         this._emaCalculator2 = null;
     }
 
-    closeHandler(data) {
-        logger.error(`Websocket closed unexpectedly with data: ${data}. Attempting to re-connect.`);
+    closeHandler() {
+        logger.error(`Websocket closed unexpectedly, attempting to re-connect.`);
 
         // try to re-connect the first time...
         this._websocketClient.connect();
@@ -176,86 +184,51 @@ class TradeBot {
             }
             this._lastSequence = data.sequence;
 
-            data.price = parseFloat(data.price);
+            const trade = {
+                timestamp: Date.parse(data.time),
+                value: data.price
+            };
 
-            // parse the time into an int here and feed it into the ema calculator
-            const dateTimestamp = Date.parse(data.time);
+            const emaPromise1 = this._emaCalculator1.nextValue(trade);
+            const emaPromise2 = this._emaCalculator2.nextValue(trade);
+            Promise.all([emaPromise1, emaPromise2]).then((values) => {
+                const [ema1, ema2] = values;
 
-            // calc emas
-            this._emaCalculator1.push(dateTimestamp, data.price);
-            this._emaCalculator2.push(dateTimestamp, data.price);
-            
-            const ema1 = this._emaCalculator1.movingAverage();
-            const ema2 = this._emaCalculator2.movingAverage();
-            
-            // need to re-assign these as fast as possible so that the next message coming in has the new values for calculations
-            this._lastTime = dateTimestamp;
-
-            if (!this._operationPending) {
-                // if it's BELOW
-                if (ema1 < ema2) {
-                    // if we're holding BTC, we need to sell.
-                    if (this._side === BITCOIN) {
-                        logger.info(`Executing a 'sell' order at: ${data.price}`);
-                        this._side = USD;
-                        //this.sell(data.price);
-                    }
-                }
-                // if it's ABOVE
-                else {
-                    // if we're not holding BTC, we need to buy.
-                    if (this._side === USD) {
-                        logger.info(`Executing a 'buy' order at: ${data.price}`);
-                        this._side = BITCOIN;
-                        //this.buy(data.price);
-                    }
-                }
-                
-                /*// handle the divide by 0 problem.
-                if (Number.isFinite(slope)) {
-                    // if we are currently exposed, side === BTC... check if we need to do anything
-                    if (this._side === BITCOIN) {
-                        if (slope < this._sellThreshold) {
-                            this.sell(data.price, slope);
+                if (!this._operationPending) {
+                    // if it's BELOW
+                    if (ema1 < ema2) {
+                        // if we're holding BTC, we need to sell.
+                        if (this._side === BITCOIN) {
+                            logger.info(`Executing a 'sell' order at: ${data.price}`);
+                            this._side = USD;
+                            //this.sell(data.price);
                         }
                     }
-                    // if we are currently out, side === USD... check if we need to do anything
+                    // if it's ABOVE
                     else {
-                        if (slope > this._buyThreshold) {
-                            this.buy(data.price, slope);
+                        // if we're not holding BTC, we need to buy.
+                        if (this._side === USD) {
+                            logger.info(`Executing a 'buy' order at: ${data.price}`);
+                            this._side = BITCOIN;
+                            //this.buy(data.price);
                         }
                     }
-                }*/
-            }
-
-            // TODO: we really shouldn't need this block...
-            /*// if we are currently exposed, check if we need to do any emergency sell-offs
-            if (this._side === BITCOIN) {
-                // sell and send an email if the price drops too far from the all time high
-                // TODO: make DROP_THRESHOLD settable via api... may need some authentication on this, a secret key or something
-                if ((this._allTimeHigh - this._dropThreshold) >= data.price) {
-                    this.emergencySell(data.price, 'price dropped too far from all time high');
                 }
 
-                // sell and send an email if the price drops below initial investment amount
-                if (((data.price * this._btcHoldings) + this._usdHoldings) <= USD_TOTAL_INVESTMENT) {
-                    this.emergencySell(data.price, 'price dropped below initial investment');
+                // if we want to store the points store them
+                if (this._store) {
+                    this.savePoint({
+                        time: new Date(data.time),
+                        price: data.price,
+                        ema1,
+                        ema2
+                    });
                 }
-            }*/
+            });
 
             // update _allTimeHigh if it should be updated
             if (data.price > this._allTimeHigh) {
                 this._allTimeHigh = data.price;
-            }
-
-            // if we want to store the points store them
-            if (this._store) {
-                this.savePoint({
-                    time: new Date(dateTimestamp),
-                    price: data.price,
-                    ema1,
-                    ema2
-                });
             }
         }
 
@@ -269,8 +242,8 @@ class TradeBot {
                     // kill the trade timer
                     clearTimeout(this._tradeTimer);
 
-                    // NOTE: we could make this faster by doing the math ourselves instead of calling their api, but this approach
-                    // ensures that their platform is always the source of truth and not us so it seems ok to halt any trades until this is done.
+                    // NOTE: this approach ensures that their platform is always the source of truth
+                    // and not us so it seems ok to halt any trades until this is done.
                     this.fetchPosition();
                 }
             }
@@ -360,7 +333,7 @@ class TradeBot {
         }
     }
 
-    emergencySell(currentPrice, reason) {
+    /*emergencySell(currentPrice, reason) {
         this._operationPending = true;
 
         this._restClient.sell({
@@ -380,7 +353,7 @@ class TradeBot {
         }).catch((err) => {
             logger.error(`Tried to do an emergency sell at: ${currentPrice}, but failed due to: ${err}. Original reason for trying to sell: ${reason}`);
         });
-    }
+    }*/
 
     getAllTimeHigh() {
         return this._allTimeHigh;

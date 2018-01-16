@@ -92,7 +92,7 @@ class EmaIrregularTimeSeries {
 
         // add it to the queue
         this.queue.enqueue({
-            timestamp: next.timestamp,
+            timestamp: parseInt(next.timestamp),
             value: parseFloat(next.value),
             resolve
         });
