@@ -18,14 +18,13 @@ const { logger, flushLogsAndExit } = require('./utils');
 const express = require('express');
 const cors = require('cors');
 
-const MINUTES = 60*1000;
-const HOURS = 60*MINUTES;
-const DAYS = 24*HOURS;
+const MINUTES = 60 * 1000;
+const HOURS = 60 * MINUTES;
+const DAYS = 24 * HOURS;
 
-const EMA_LENGTH1 = 1*HOURS;
-const EMA_LENGTH2 = 6*HOURS;
+const EMA_LENGTH1 = 12 * HOURS;
+const EMA_LENGTH2 = 26 * HOURS;
 
-const DROP_THRESHOLD = 500.00; // if it drops this far from the all_time_high sell and send an email!
 const store = false;
 
 const PRODUCT_ID = 'BTC-USD';
